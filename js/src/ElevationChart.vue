@@ -13,9 +13,9 @@ const props = defineProps<{
   trackCoords: number[][]; // [lon, lat, elevation]
 }>();
 
-const emit = defineEmits<{
-  (e: 'highlight-point', index: number): void;
-}>();
+// const emit = defineEmits<{
+//   (e: 'highlight-point', index: number): void;
+// }>();
 
 // 👇 Canvas reference
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -40,9 +40,12 @@ watch(
 
 // 🎨 Initialize chart once on mount
 onMounted(() => {
-  if (!canvasRef.value || !props.trackCoords.length) {
-    console.warn('⛔ Canvas or track data unavailable during mount.');
+  if (!canvasRef.value) {
+    console.warn('⛔ Canvas unavailable during mount.');
     return;
+  }
+  if (!props.trackCoords.length) {
+    console.log('⛔ No track coordinates provided yet.');
   }
 
   const elevations = props.trackCoords.map((p) => p[2]);
