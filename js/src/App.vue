@@ -1,4 +1,6 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import MapView from './MapView.vue';
+</script>
 
 <template>
   <div class="container py-4 px-3 mx-auto">
@@ -7,7 +9,7 @@
       Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
       documentation
     </p>
-    <button class="btn btn-primary">button</button>
+    <map-view />
   </div>
 </template>
 
