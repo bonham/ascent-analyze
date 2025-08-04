@@ -13,9 +13,9 @@ const props = defineProps<{
   trackCoords: number[][]; // [lon, lat, elevation]
 }>();
 
-// const emit = defineEmits<{
-//   (e: 'highlight-point', index: number): void;
-// }>();
+const emit = defineEmits<{
+  (e: 'highlight-point', index: number): void;
+}>();
 
 // 👇 Canvas reference
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -81,6 +81,20 @@ onMounted(() => {
           }
         }
       }
+    }
+  });
+
+  // Inside chart setup…
+  canvasRef.value?.addEventListener('mousemove', (event) => {
+    const points = chartInstance?.getElementsAtEventForMode(
+      event,
+      'nearest',
+      { intersect: true },
+      true
+    );
+    if (points && points.length) {
+      const index = points[0].index;
+      emit('highlight-point', index);
     }
   });
 });

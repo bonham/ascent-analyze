@@ -11,7 +11,8 @@ export default defineComponent({
   },
   setup() {
     const trackPoints = ref<number[][]>([]);
-    return { trackPoints };
+    const selectedIndex = ref<number | null>(null);
+    return { trackPoints, selectedIndex };
   }
 });
 
@@ -24,8 +25,8 @@ export default defineComponent({
       Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
       documentation
     </p>
-    <MapView @track-loaded="trackPoints = $event" />
-    <ElevationChart :trackCoords="trackPoints" />
+    <MapView @track-loaded="trackPoints = $event" :selected-index="selectedIndex" />
+    <ElevationChart :trackCoords="trackPoints" @highlight-point="selectedIndex = $event" />
   </div>
 </template>
 
