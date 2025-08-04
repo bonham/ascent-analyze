@@ -19,6 +19,7 @@
   "dependencies": {
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.7",
+    "chart.js": "^4.5.0",
     "ol": "^10.6.1",
     "pinia": "^3.0.3",
     "vue": "^3.5.18"
