@@ -1,21 +1,10 @@
-<script lang="ts">
+<script setup lang="ts">
 import MapView from './MapView.vue';
 import ElevationChart from './ElevationChart.vue';
-import { defineComponent, ref } from 'vue';
+import { ref } from 'vue';
 
-export default defineComponent({
-  name: 'App',
-  components: {
-    MapView,
-    ElevationChart
-  },
-  setup() {
-    const trackPoints = ref<number[][]>([]);
-    const selectedIndex = ref<number | null>(null);
-    return { trackPoints, selectedIndex };
-  }
-});
-
+const trackPoints = ref<number[][]>([]);
+const xValue = ref<number | null>(null);
 </script>
 
 <template>
@@ -25,8 +14,8 @@ export default defineComponent({
       Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
       documentation
     </p>
-    <MapView @track-loaded="trackPoints = $event" :selected-index="selectedIndex" />
-    <ElevationChart :trackCoords="trackPoints" @highlight-point="selectedIndex = $event" />
+    <MapView @track-loaded="trackPoints = $event" :highlightXpos="xValue" />
+    <ElevationChart :trackCoords="trackPoints" @highlight-xvalue="xValue = $event" />
   </div>
 </template>
 
