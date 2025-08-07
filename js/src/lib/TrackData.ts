@@ -2,7 +2,7 @@
 interface TrackPoint {
   lat: number;
   lon: number;
-  elevation?: number; // Optional elevation
+  elevation: number; // Optional elevation
 }
 
 // Define type for a segment (an array of points)
@@ -17,8 +17,12 @@ class TrackData {
     this.segments.push(points);
   }
 
-  // Add a point to a specific segment
-  addPointToSegment(segmentIndex: number, lat: number, lon: number, elevation?: number): void {
+  /**Add a point to a specific segment
+   * @param segmentIndex - which segment in track.
+   * @param lat - latitude.
+   * @param lon - longitude
+  */
+  addPointToSegment(segmentIndex: number, lat: number, lon: number, elevation: number): void {
     if (!this.segments[segmentIndex]) {
       this.segments[segmentIndex] = [];
     }
@@ -41,5 +45,5 @@ class TrackData {
   }
 }
 
-export default TrackData;
+export { TrackData };
 export type { TrackPoint, TrackSegment };

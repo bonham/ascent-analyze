@@ -1,21 +1,85 @@
 <script setup lang="ts">
 import MapView from './MapView.vue';
 import ElevationChart from './ElevationChart.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { GeoJsonLoader } from './lib/GeoJsonLoader';
+import type { TrackData, TrackSegment } from './lib/TrackData'
+import { makeEquidistantTrackAkima } from './lib/InterpolateSegment';
+import type { TrackSegmentWithDistance } from './lib/InterpolateSegment';
+import type { FeatureCollection, Feature, LineString } from 'geojson';
 
-const trackPoints = ref<number[][]>([]);
+
+const POINT_DISTANCE = 100; // Distance in meters for equidistant points
+
+const loadedLineStringFeature = ref<Feature<LineString> | null>(null)
+const interpolatedSegment = ref<TrackSegmentWithDistance>([])
 const xValue = ref<number | null>(null);
+const maxDistance = ref<number>(0)
+
+async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
+  const response = await fetch('/kl.json');
+  const geojson = await response.json();
+  return geojson
+}
+
+function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
+  if (tracks.length === 0) {
+    console.log("No tracks found in input")
+    return []
+  } else {
+    if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
+    const segments = tracks[0].getSegments()
+    const numSegments = segments.length
+    if (numSegments === 0) {
+      console.log("No segments found in track.")
+      return []
+    }
+    else {
+      if (numSegments > 1) {
+        console.log(`Found ${numSegments} segments in track. Only first one will be processed`)
+      }
+      return segments[0]
+    }
+  }
+}
+
+onMounted(async () => {
+  // Load the track data when the component is mounted
+  let geojson: FeatureCollection<LineString>;
+  try {
+    geojson = await loadGeoJson()
+  } catch (e) {
+    console.error('Failed to load track data:', e);
+    return
+  }
+  loadedLineStringFeature.value = geojson.features[0]
+  const tracks = GeoJsonLoader.loadFromGeoJson(geojson);
+  const segment = extractFirstSegmentFirstTrack(tracks)
+
+  let segmentEquidistant: TrackSegmentWithDistance
+  try {
+    segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+  } catch (e) {
+    console.error('Failed to create equidistant segment:', e);
+    return
+  }
+  maxDistance.value = segmentEquidistant[segmentEquidistant.length - 1].distanceFromStart
+  interpolatedSegment.value = segmentEquidistant
+  //  firstSegment.value = segment
+})
+
+
 </script>
 
 <template>
   <div class="container py-4 px-3 mx-auto">
     <h1>You did it!</h1>
     <p>
-      Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-      documentation
+      Elevation analyzer
     </p>
-    <MapView @track-loaded="trackPoints = $event" :highlightXpos="xValue" />
-    <ElevationChart :trackCoords="trackPoints" @highlight-xvalue="xValue = $event" />
+    <MapView :highlightXpos="xValue" :line-string-f="loadedLineStringFeature" />
+    <ElevationChart :trackCoords="interpolatedSegment" @highlight-xvalue="xValue = $event"
+      :point-distance=POINT_DISTANCE />
   </div>
 </template>
 

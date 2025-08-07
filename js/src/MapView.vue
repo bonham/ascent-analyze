@@ -18,19 +18,19 @@ import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
 import { fromLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
+import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
 import Point from 'ol/geom/Point';
+import type { LineString } from 'ol/geom';
+import { isEmpty } from 'ol/extent';
 
-let coords: number[][]
 let map: Map;
+const vectorSource = new VectorSource()
 
 const mapContainer = ref<HTMLDivElement | null>(null);
 
 const props = defineProps<{
-  selectedIndex: number | null; // Index of the selected point to highlight
-}>();
-
-const emit = defineEmits<{
-  (e: 'track-loaded', coords: number[][]): void;
+  highlightXpos: number | null; // Index of the selected point to highlight
+  lineStringF: GeoJsonFeature<GeoJsonLineString> | null;
 }>();
 
 const markerSource = new VectorSource();
@@ -44,26 +44,25 @@ const markerLayer = new VectorLayer({
   })
 });
 
+
 onMounted(async () => {
   if (!mapContainer.value) return;
 
-  let geojson;
-  try {
-    const response = await fetch('/kl.json');
-    geojson = await response.json();
-  } catch (error) {
-    console.error('Failed to load GeoJSON:', error);
+
+  // only add feature to source if we have data:
+  if (props.lineStringF !== null) {
+
+    const feature = new GeoJSON().readFeature(
+      props.lineStringF,
+      {
+        featureProjection: 'EPSG:3857'
+      }
+    )
+    // make array and convert types
+    vectorSource.addFeature(feature as unknown as Feature<LineString>)
   }
-  // Extract coordinates from track and emit to parent
-  coords = geojson.features[0].geometry.coordinates;
-  emit('track-loaded', coords);
 
 
-  const vectorSource = new VectorSource({
-    features: new GeoJSON().readFeatures(geojson, {
-      featureProjection: 'EPSG:3857'
-    })
-  });
 
   const trackStyle = new Style({
     stroke: new Stroke({
@@ -76,8 +75,9 @@ onMounted(async () => {
     source: vectorSource,
     style: trackStyle      // Apply the custom style
   });
-  const extent = vectorSource.getExtent();
 
+  const defaultCenter = fromLonLat([0, 0]); // Center on Null Island 🌍
+  const defaultZoom = 2;                    // World view
 
   map = new Map({
     target: mapContainer.value,
@@ -86,25 +86,65 @@ onMounted(async () => {
       vectorLayer
     ],
     view: new View({
-      center: getCenter(extent),
-      zoom: 14
+      center: defaultCenter,
+      zoom: defaultZoom
     })
   });
   map.addLayer(markerLayer);
+
   // Automatically fit the view to the extent of the vector data
-  map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+  if (props.lineStringF !== null) {
+    const extent = vectorSource.getExtent();
+    if (!isEmpty(extent)) {
+      map.getView().setCenter(getCenter(extent))
+      map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+    }
 
-
-
+  }
 });
 
-watch(() => props.selectedIndex, (newIndex) => {
-  if (newIndex === null || !coords || newIndex < 0 || newIndex >= coords.length) {
-    console.warn('⛔ Invalid index for highlighting:', newIndex);
+watch(() => props.lineStringF, (lineString) => {
+  if (lineString === null) return
+
+  const feature = new GeoJSON().readFeature(
+    props.lineStringF,
+    {
+      featureProjection: 'EPSG:3857'
+    }
+  )
+  // make array and convert types
+  vectorSource.addFeature(feature as unknown as Feature<LineString>)
+
+  if (map) {
+    const extent = vectorSource.getExtent();
+    if (!isEmpty(extent)) {
+      map.getView().fit(extent, {
+        padding: [50, 50, 50, 50],
+        maxZoom: 17,
+        duration: 1000
+      });
+      map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+    }
+  }
+
+})
+
+watch(() => props.highlightXpos, (newXpos) => {
+
+  if (props.lineStringF === null) {
+    console.warn("LineString is null in MapViewProperty")
+    return
+  }
+  const coords = props.lineStringF.geometry.coordinates
+  // todo -we need to change data treatment to calculate distances when loading the track. also the ElevationChart needs to use explicit distances. 
+  // btw the dataset does not have equidistant points, so this is a bit of a hack. Need to spline interpolate the data to get equidistant points.
+
+  if (newXpos === null || !coords || newXpos < 0) {
+    console.warn('⛔ Invalid index for highlighting:', newXpos);
     markerSource.clear(); // Clear marker if no valid index
     return;
   }
-  const coord = coords[newIndex]; // [lon, lat, elev]
+  const coord = coords[newXpos]; // [lon, lat, elev]
   if (!coord) return;
 
   const projected = fromLonLat([coord[0], coord[1]]);
@@ -117,10 +157,6 @@ watch(() => props.selectedIndex, (newIndex) => {
 
   markerSource.addFeature(marker); // Add new marker
 });
-
-
-
-
 
 </script>
 

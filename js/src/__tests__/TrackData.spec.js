@@ -1,4 +1,4 @@
-import TrackData from "@/lib/TrackData"
+import { TrackData } from "@/lib/TrackData"
 
 describe("Simple", () => {
   test("Simple", () => {
