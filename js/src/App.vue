@@ -7,11 +7,12 @@ import type { TrackData, TrackSegment } from './lib/TrackData'
 import { makeEquidistantTrackAkima } from './lib/InterpolateSegment';
 import type { TrackSegmentWithDistance } from './lib/InterpolateSegment';
 import type { FeatureCollection, Feature, LineString } from 'geojson';
+import { Track2GeoJson } from './lib/Track2GeoJson';
 
 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 
-const loadedLineStringFeature = ref<Feature<LineString> | null>(null)
+const lineStringFeature = ref<Feature<LineString> | null>(null)
 const interpolatedSegment = ref<TrackSegmentWithDistance>([])
 const xValue = ref<number | null>(null);
 const maxDistance = ref<number>(0)
@@ -52,7 +53,7 @@ onMounted(async () => {
     console.error('Failed to load track data:', e);
     return
   }
-  loadedLineStringFeature.value = geojson.features[0]
+
   const tracks = GeoJsonLoader.loadFromGeoJson(geojson);
   const segment = extractFirstSegmentFirstTrack(tracks)
 
@@ -65,6 +66,11 @@ onMounted(async () => {
   }
   maxDistance.value = segmentEquidistant[segmentEquidistant.length - 1].distanceFromStart
   interpolatedSegment.value = segmentEquidistant
+
+  // get geojson from interpolated segment
+  const interpolatedLineStringFeature = new Track2GeoJson(segmentEquidistant).toGeoJsonLineStringFeature()
+  lineStringFeature.value = interpolatedLineStringFeature
+
   //  firstSegment.value = segment
 })
 
@@ -77,7 +83,7 @@ onMounted(async () => {
     <p>
       Elevation analyzer
     </p>
-    <MapView :highlightXpos="xValue" :line-string-f="loadedLineStringFeature" />
+    <MapView :highlightXpos="xValue" :line-string-f="lineStringFeature" />
     <ElevationChart :trackCoords="interpolatedSegment" @highlight-xvalue="xValue = $event"
       :point-distance=POINT_DISTANCE />
   </div>
