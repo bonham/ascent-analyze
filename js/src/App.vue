@@ -15,14 +15,16 @@ const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 const lineStringFeature = ref<Feature<LineString> | null>(null)
 const interpolatedSegment = ref<TrackSegmentWithDistance>([])
 const xValue = ref<number | null>(null);
-const maxDistance = ref<number>(0)
+// const maxDistance = ref<number>(0)
 
+// Load a geojson file
 async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
   const response = await fetch('/kl.json');
   const geojson = await response.json();
   return geojson
 }
 
+// extract first segment from first track
 function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
   if (tracks.length === 0) {
     console.log("No tracks found in input")
@@ -45,6 +47,7 @@ function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
 }
 
 onMounted(async () => {
+
   // Load the track data when the component is mounted
   let geojson: FeatureCollection<LineString>;
   try {
@@ -54,9 +57,13 @@ onMounted(async () => {
     return
   }
 
+  // Convert from geojson to list of track objects
   const tracks = GeoJsonLoader.loadFromGeoJson(geojson);
+
+  // Only first segment is taken into account
   const segment = extractFirstSegmentFirstTrack(tracks)
 
+  // Interpolation
   let segmentEquidistant: TrackSegmentWithDistance
   try {
     segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
@@ -64,14 +71,16 @@ onMounted(async () => {
     console.error('Failed to create equidistant segment:', e);
     return
   }
-  maxDistance.value = segmentEquidistant[segmentEquidistant.length - 1].distanceFromStart
+
+  // not needed ?
+  // maxDistance.value = segmentEquidistant[segmentEquidistant.length - 1].distanceFromStart
+
   interpolatedSegment.value = segmentEquidistant
 
   // get geojson from interpolated segment
   const interpolatedLineStringFeature = new Track2GeoJson(segmentEquidistant).toGeoJsonLineStringFeature()
   lineStringFeature.value = interpolatedLineStringFeature
 
-  //  firstSegment.value = segment
 })
 
 
@@ -83,9 +92,13 @@ onMounted(async () => {
     <p>
       Elevation analyzer
     </p>
-    <MapView :highlightXpos="xValue" :line-string-f="lineStringFeature" />
-    <ElevationChart :trackCoords="interpolatedSegment" @highlight-xvalue="xValue = $event"
-      :point-distance=POINT_DISTANCE />
+    <div class="row my-3">
+      <MapView :highlightXpos="xValue" :line-string-f="lineStringFeature" />
+    </div>
+    <div class="row my-3">
+      <ElevationChart :trackCoords="interpolatedSegment" @highlight-xvalue="xValue = $event"
+        :point-distance=POINT_DISTANCE />
+    </div>
   </div>
 </template>
 
