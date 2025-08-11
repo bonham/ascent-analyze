@@ -9,6 +9,12 @@ import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import type { TrackSegment } from './lib/TrackData';
 
+import type {
+
+  Plugin
+} from 'chart.js';
+
+
 // 👇 Define props using defineProps
 const props = defineProps<{
   trackCoords: TrackSegment; // TrackSegment with equidistant points
@@ -49,6 +55,29 @@ watch(
   { immediate: false }
 );
 
+let mouseX: number | null = null;
+
+// Plugin to draw vertical line at mouseX
+const verticalLinePlugin: Plugin<'line'> = {
+  id: 'verticalLine',
+  afterDraw: (chart) => {
+    if (mouseX === null) return;
+
+    const ctx = chart.ctx;
+    const topY = chart.chartArea.top;
+    const bottomY = chart.chartArea.bottom;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(mouseX, topY);
+    ctx.lineTo(mouseX, bottomY);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
 // 🎨 Initialize chart once on mount
 onMounted(() => {
 
@@ -75,6 +104,15 @@ onMounted(() => {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        tooltip: {
+          enabled: true
+        }
+      },
       scales: {
         x: {
           title: {
@@ -89,6 +127,23 @@ onMounted(() => {
           }
         }
       }
+    },
+    plugins: [verticalLinePlugin]
+  });
+
+  // Track mouse position relative to canvas
+  canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = event.clientX - rect.left;
+    if (chartInstance) {
+      chartInstance.draw(); // Trigger redraw
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    mouseX = null;
+    if (chartInstance) {
+      chartInstance.draw(); // Clear the line
     }
   });
 
