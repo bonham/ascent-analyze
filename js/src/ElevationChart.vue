@@ -8,6 +8,8 @@
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import type { TrackSegment } from './lib/TrackData';
+import { createAscentDataset } from './lib/elevationChartHelpers';
+import type { ElevationPoint } from './lib/elevationChartHelpers';
 
 import type {
 
@@ -33,7 +35,14 @@ let chartInstance: Chart | null = null;
 
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
   chartInstance.data.labels = segment.map((_, i) => i * props.pointDistance);
-  chartInstance.data.datasets[0].data = segment.map((p) => p.elevation);
+
+  const eps: ElevationPoint[] = segment.map((_, i) => ({
+    distance: i * props.pointDistance,
+    elevation: _.elevation
+  }))
+  const areasDatasets = createAscentDataset(eps)
+  chartInstance.data.datasets = areasDatasets
+
   chartInstance.update();
 }
 
@@ -81,6 +90,21 @@ const verticalLinePlugin: Plugin<'line'> = {
 // 🎨 Initialize chart once on mount
 onMounted(() => {
 
+  const scales = {
+    x: {
+      title: {
+        display: true,
+        text: 'Distance (m)'
+      }
+    },
+    y: {
+      title: {
+        display: true,
+        text: 'Elevation (m)'
+      }
+    }
+  }
+
   const canvas = canvasRef.value;
 
   if (!canvas) {
@@ -101,35 +125,21 @@ onMounted(() => {
         }
       ]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
-      plugins: {
-        tooltip: {
-          enabled: true
-        }
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Distance (m)'
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Elevation (m)'
-          }
-        }
-      }
-    },
     plugins: [verticalLinePlugin]
   });
+
+  chartInstance.options.responsive = true
+  chartInstance.options.maintainAspectRatio = false
+  chartInstance.options.interaction = {
+    mode: 'index',
+    intersect: false
+  }
+  chartInstance.options.scales = scales
+  chartInstance.options.plugins = {
+    tooltip: { enabled: false },
+    legend: { display: false }
+  }
+
 
   // Track mouse position relative to canvas
   canvas.addEventListener('mousemove', (event) => {
