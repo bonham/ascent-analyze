@@ -8,8 +8,6 @@
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import type { TrackSegment } from './lib/TrackData';
-import { createAscentDataset } from './lib/elevationChartHelpers';
-import type { ElevationPoint } from './lib/elevationChartHelpers';
 
 import type {
 
@@ -31,18 +29,19 @@ const emit = defineEmits<{
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 // 👇 Chart instance holder
-let chartInstance: Chart | null = null;
+let chartInstance: Chart<'line'> | null = null;
 
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
   chartInstance.data.labels = segment.map((_, i) => i * props.pointDistance);
 
-  const eps: ElevationPoint[] = segment.map((_, i) => ({
-    distance: i * props.pointDistance,
-    elevation: _.elevation
-  }))
-  const areasDatasets = createAscentDataset(eps)
-  chartInstance.data.datasets = areasDatasets
+  const numDataPoints = segment.length
+  const myLabels = Array.from({ length: numDataPoints }, (_, i) => i * props.pointDistance)
+  const myDataset = segment.map((_) => _.elevation)
 
+  chartInstance.data = {
+    datasets: [{ data: myDataset }],
+    labels: myLabels
+  }
   chartInstance.update();
 }
 
