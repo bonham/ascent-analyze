@@ -35,7 +35,7 @@ interface ElevationPoint {
 export function createAscentDataset(points: ElevationPoint[]): ChartDataset<'line', { x: number; y: number }[]>[] {
   // Helper to determine ascent color
   function getAscentColor(ascent: number) {
-    return ascent < 0 ? 'rgba(144,238,144,0.5)' : 'rgba(255,182,193,0.5)'; // light green or light red
+    return ascent < 0 ? 'rgba(55, 134, 55, 1)' : 'rgba(153, 15, 36, 1)'; // light green or light red
   }
 
   // Prepare datasets
