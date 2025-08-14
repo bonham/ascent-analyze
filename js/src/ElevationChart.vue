@@ -10,21 +10,8 @@ import Chart from 'chart.js/auto';
 import type { TrackSegment } from './lib/TrackData';
 import { createAreaProperties } from './lib/elevationChartHelpers'
 import type { ElevationPoint } from './lib/elevationChartHelpers';
-
-interface IndexedPoint {
-  index: number,
-  y: number
-}
-
-interface XYPoint {
-  x: number,
-  y: number
-}
-
-
-import type {
-  Plugin,
-} from 'chart.js';
+import { createAscentFillPlugin } from './lib/AscentFillPlugin';
+import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 
 
 // 👇 Define props using defineProps
@@ -84,128 +71,10 @@ watch(
   { immediate: false }
 );
 
-let mouseX: number | null = null;
-
 // Plugin to draw vertical line at mouseX
-const verticalLinePlugin: Plugin<'line'> = {
-  id: 'verticalLine',
-  afterDraw: (chart) => {
-    if (mouseX === null) return;
-
-    const ctx = chart.ctx;
-    const topY = chart.chartArea.top;
-    const bottomY = chart.chartArea.bottom;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(mouseX, topY);
-    ctx.lineTo(mouseX, bottomY);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.stroke();
-    ctx.restore();
-  }
-};
-
-
-const ascentFillPlugin: Plugin<'line'> = {
-  id: 'ascentFillPlugin',
-
-  afterDatasetDraw(chart) {
-    const { ctx, chartArea: { bottom } } = chart;
-
-    const dataSets = chart.config.data.datasets
-    if (dataSets.length === 0) return
-
-    const yScale = chart.scales.y;
-    const xScale = chart.scales.x;
-    if (xScale.type !== 'category') {
-      console.log(`Need x-axis scale type 'category', not ${xScale.type}`)
-      return
-    }
-
-    const meta = chart.getDatasetMeta(0)
-    if (meta.type !== 'line') return; // Only apply to line charts
-
-    // crazy
-    function hasProperty<T extends object, K extends PropertyKey>(
-      x: unknown,
-      prop: K
-    ): x is T & Record<K, unknown> {
-      return typeof x === 'object' && x !== null && !Array.isArray(x) && prop in x;
-    }
-
-    // returns { index: number, y: number }[] - index is not really useful as it should be 0, 1, 2 ... etc ... ( same as array index )
-    const parsedData: IndexedPoint[] = [] // meta.data.map(element => element.$context.parsed) as { x: number; y: number }[]; // not good, needs checking
-
-    // check each element for correct type and create list of points
-    meta.data.forEach((element, idx) => {
-      const u = element as unknown
-      if (!hasProperty(u, '$context')) {
-        console.log(`Element with index ${idx} does not have $context property`)
-        return
-      }
-      const ctxt = u.$context
-      if (!hasProperty(ctxt, 'parsed')) {
-        console.log(`Element context with index ${idx} does not have parsed property`)
-        return
-      }
-      const dataPoint = ctxt.parsed
-      if (hasProperty(dataPoint, 'x') && hasProperty(dataPoint, 'y')) {
-        // hacky at the end
-        parsedData.push({ index: Number(dataPoint.x), y: Number(dataPoint.y) })
-      }
-    })
-
-    // Translate to our distance in x . Will create a list of [ x, y ]
-    const myPoints: XYPoint[] = parsedData.map((_, i) => ({ x: i * props.pointDistance, y: _.y }))
-
-    function calcColors(points: XYPoint[]): string[] {
-      const colorList: string[] = []
-
-      for (let i = 0; i < points.length - 1; i++) {
-        const p1 = points[i];
-        const x1 = p1.x
-        const y1 = p1.y
-
-        const p2 = points[i + 1];
-        const x2 = p2.x
-        const y2 = p2.y
-
-        const ascent = (y2 - y1) / (x2 - x1);
-
-        const color = ascent < 0 ? 'rgba(55, 134, 55, 1)' : 'rgba(153, 15, 36, 1)'; //  green or  red
-        colorList.push(color)
-      }
-      return colorList
-    }
-
-    ctx.save();
-
-    const colors = calcColors(myPoints)
-    colors.forEach((color, index) => {
-
-      const x1 = xScale.getPixelForValue(parsedData[index].index);
-      const y1 = yScale.getPixelForValue(parsedData[index].y);
-      const x2 = xScale.getPixelForValue(parsedData[index + 1].index);
-      const y2 = yScale.getPixelForValue(parsedData[index + 1].y);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.lineTo(x2, bottom);
-      ctx.lineTo(x1, bottom);
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = color;
-      ctx.fill();
-      ctx.stroke();
-    });
-    ctx.restore();
-
-  }
-};
+const verticalLinePlugin = createVerticalLinePlugin()
+// Plugin to fill area below chart
+const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
 
 // 🎨 Initialize chart once on mount
 onMounted(() => {
@@ -256,7 +125,6 @@ onMounted(() => {
       plugins: {
         tooltip: { enabled: false },
         legend: { display: false },
-        ascentFillPlugin: { data: [] }
       },
       elements: {
         point: {
@@ -267,28 +135,6 @@ onMounted(() => {
     },
     plugins: [verticalLinePlugin, ascentFillPlugin]
   });
-
-  // Track mouse position relative to canvas
-  canvas.addEventListener('mousemove', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    mouseX = event.clientX - rect.left;
-    if (chartInstance) {
-      chartInstance.draw(); // Trigger redraw
-    }
-  });
-
-  canvas.addEventListener('mouseleave', () => {
-    mouseX = null;
-    if (chartInstance) {
-      chartInstance.draw(); // Clear the line
-    }
-  });
-
-  // if (props.trackCoords.length) {
-  //   updateChart(chartInstance, props.trackCoords)
-  // } else {
-  //   console.log('⛔ No track coordinates provided during onMount.');
-  // }
 
   // Add mousemove event listener for highlighting points
 
