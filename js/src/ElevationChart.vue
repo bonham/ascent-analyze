@@ -8,10 +8,12 @@
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import type { TrackSegment } from './lib/TrackData';
+import { createAreaProperties } from './lib/elevationChartHelpers'
+import type { ElevationPoint, AreaProperties } from './lib/elevationChartHelpers';
+
 
 import type {
-
-  Plugin
+  Plugin,
 } from 'chart.js';
 
 
@@ -32,15 +34,24 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 let chartInstance: Chart<'line'> | null = null;
 
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
-  chartInstance.data.labels = segment.map((_, i) => i * props.pointDistance);
 
   const numDataPoints = segment.length
-  const myLabels = Array.from({ length: numDataPoints }, (_, i) => i * props.pointDistance)
+  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance).toFixed(1))
   const myDataset = segment.map((_) => _.elevation)
 
   chartInstance.data = {
     datasets: [{ data: myDataset }],
     labels: myLabels
+  }
+
+  const eps: ElevationPoint[] = segment.map((_, i) => ({ distance: i * props.pointDistance, elevation: _.elevation }))
+  const areaProperties = createAreaProperties(eps)
+
+  if (
+    chartInstance.options.plugins &&
+    chartInstance.options.plugins.ascentFillPlugin !== undefined
+  ) {
+    chartInstance.options.plugins.ascentFillPlugin = { data: areaProperties }
   }
   chartInstance.update();
 }
@@ -86,6 +97,48 @@ const verticalLinePlugin: Plugin<'line'> = {
   }
 };
 
+
+const ascentFillPlugin: Plugin<'line'> = {
+  id: 'ascentFillPlugin',
+
+  beforeDatasetDraw(chart, args, pluginOptions: { data: AreaProperties[] }) {
+    const { ctx } = chart;
+
+    const areas = pluginOptions.data
+
+    if (areas === undefined || areas.length === 0) {
+      console.error('Options not defined or empty for ascentFillPlugin', areas?.length)
+      return
+    } else {
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+
+      const minElevation = Math.min(...areas.map(_ => Math.min(_.y1, _.y2)))
+      const bottom = yScale.getPixelForValue(minElevation)
+
+      ctx.save();
+
+      areas.forEach((area, index) => {
+
+        const x1 = xScale.getPixelForValue(index);
+        const x2 = xScale.getPixelForValue(index + 1);
+        const y1 = yScale.getPixelForValue(area.y1);
+        const y2 = yScale.getPixelForValue(area.y2);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x2, bottom);
+        ctx.lineTo(x1, bottom);
+        ctx.closePath();
+        ctx.fillStyle = area.color;
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+  }
+};
+
 // 🎨 Initialize chart once on mount
 onMounted(() => {
 
@@ -124,7 +177,7 @@ onMounted(() => {
         }
       ]
     },
-    plugins: [verticalLinePlugin]
+    plugins: [verticalLinePlugin, ascentFillPlugin]
   });
 
   chartInstance.options.responsive = true
@@ -136,7 +189,8 @@ onMounted(() => {
   chartInstance.options.scales = scales
   chartInstance.options.plugins = {
     tooltip: { enabled: false },
-    legend: { display: false }
+    legend: { display: false },
+    ascentFillPlugin: { data: [] }
   }
 
 
