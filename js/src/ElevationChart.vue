@@ -36,7 +36,7 @@ let chartInstance: Chart<'line'> | null = null;
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
 
   const numDataPoints = segment.length
-  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance).toFixed(1))
+  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance / 1000).toFixed(0))
   const myDataset = segment.map((_) => _.elevation)
 
   chartInstance.data = {
@@ -60,7 +60,7 @@ function updateChart(chartInstance: Chart, segment: TrackSegment) {
 watch(
   () => props.trackCoords,
   (newTrackSegment) => {
-    console.log('🟦 Track coordinates updated:', newTrackSegment);
+    //console.log('🟦 Track coordinates updated:', newTrackSegment);
 
     // Optionally update chart if it already exists
     if (chartInstance === null) {
@@ -102,19 +102,16 @@ const ascentFillPlugin: Plugin<'line'> = {
   id: 'ascentFillPlugin',
 
   beforeDatasetDraw(chart, args, pluginOptions: { data: AreaProperties[] }) {
-    const { ctx } = chart;
+    const { ctx, chartArea: { bottom } } = chart;
 
     const areas = pluginOptions.data
 
-    if (areas === undefined || areas.length === 0) {
-      console.error('Options not defined or empty for ascentFillPlugin', areas?.length)
+    if (areas === undefined) {
+      console.warn('Options not defined for ascentFillPlugin')
       return
     } else {
       const xScale = chart.scales.x;
       const yScale = chart.scales.y;
-
-      const minElevation = Math.min(...areas.map(_ => Math.min(_.y1, _.y2)))
-      const bottom = yScale.getPixelForValue(minElevation)
 
       ctx.save();
 
@@ -132,7 +129,10 @@ const ascentFillPlugin: Plugin<'line'> = {
         ctx.lineTo(x1, bottom);
         ctx.closePath();
         ctx.fillStyle = area.color;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = area.color;
         ctx.fill();
+        ctx.stroke();
       });
       ctx.restore();
     }
@@ -146,7 +146,7 @@ onMounted(() => {
     x: {
       title: {
         display: true,
-        text: 'Distance (m)'
+        text: 'Distance (km)'
       }
     },
     y: {
@@ -165,6 +165,7 @@ onMounted(() => {
   }
   chartInstance = new Chart(canvas, {
     type: 'line',
+
     data: {
       labels: [],
       datasets: [
@@ -172,27 +173,32 @@ onMounted(() => {
           label: 'Elevation (m)',
           data: [],
           borderColor: 'blue',
-          fill: false,
-          tension: 0.1
+          fill: false
         }
       ]
     },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      scales,
+      plugins: {
+        tooltip: { enabled: false },
+        legend: { display: false },
+        ascentFillPlugin: { data: [] }
+      },
+      elements: {
+        point: {
+          radius: 2,
+          pointStyle: 'circle'
+        },
+      }
+    },
     plugins: [verticalLinePlugin, ascentFillPlugin]
   });
-
-  chartInstance.options.responsive = true
-  chartInstance.options.maintainAspectRatio = false
-  chartInstance.options.interaction = {
-    mode: 'index',
-    intersect: false
-  }
-  chartInstance.options.scales = scales
-  chartInstance.options.plugins = {
-    tooltip: { enabled: false },
-    legend: { display: false },
-    ascentFillPlugin: { data: [] }
-  }
-
 
   // Track mouse position relative to canvas
   canvas.addEventListener('mousemove', (event) => {
