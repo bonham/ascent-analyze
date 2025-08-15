@@ -12,12 +12,14 @@ import { createAreaProperties } from './lib/elevationChartHelpers'
 import type { ElevationPoint } from './lib/elevationChartHelpers';
 import { createAscentFillPlugin } from './lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
+import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
 
 
 // 👇 Define props using defineProps
 const props = defineProps<{
   trackCoords: TrackSegment; // TrackSegment with equidistant points
   pointDistance: number;
+  cursorIndex: number | null; // Vertical line cursor index value
 }>();
 
 const emit = defineEmits<{
@@ -125,6 +127,7 @@ onMounted(() => {
       plugins: {
         tooltip: { enabled: false },
         legend: { display: false },
+        verticalLinePlugin: { xPositionManualDraw: null }
       },
       elements: {
         point: {
@@ -158,6 +161,30 @@ onMounted(() => {
       emit('highlight-xvalue', xValue);
     })
   }
+  // watch vertical cursor external change
+  watch(
+    () => props.cursorIndex,
+    (newIndex) => {
+      //console.log("New index: ", newIndex)
+      if (newIndex === null) return
+      if (chartInstance &&
+        chartInstance.data.labels &&
+        chartInstance.data.labels.length > 0 &&
+        chartInstance.config.plugins
+      ) {
+        const pixelX = chartInstance.scales['x'].getPixelForValue(newIndex); // e.g. 'March'
+        //console.log("Pixel X", pixelX)
+        //        const pluginInstance = Chart.registry.plugins.get('verticalLinePlugin');
+        const pluginInstance = verticalLinePlugin;
+        if (pluginInstance !== undefined) {
+          chartInstance.draw();
+          (pluginInstance as VerticalLinePlugin)._draw(chartInstance, pixelX);
+        }
+      }
+    }
+  )
+
+
 });
 </script>
 

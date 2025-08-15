@@ -10,11 +10,13 @@ import type { FeatureCollection, Feature, LineString } from 'geojson';
 import { Track2GeoJson } from './lib/Track2GeoJson';
 
 
-const POINT_DISTANCE = 100; // Distance in meters for equidistant points
+const POINT_DISTANCE = 1000; // Distance in meters for equidistant points
 
 const lineStringFeature = ref<Feature<LineString> | null>(null)
 const interpolatedSegment = ref<TrackSegmentWithDistance>([])
-const xValue = ref<number | null>(null);
+const elevationChartMouseXValue = ref<number | null>(null);
+const mapViewMouseIndexValue = ref<number | null>(null);
+
 // const maxDistance = ref<number>(0)
 
 // Load a geojson file
@@ -93,11 +95,12 @@ onMounted(async () => {
       Elevation analyzer
     </p>
     <div class="row my-3">
-      <MapView :highlightXpos="xValue" :line-string-f="lineStringFeature" />
+      <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
+        @hover-index="mapViewMouseIndexValue = $event" />
     </div>
     <div class="row my-3">
-      <ElevationChart :trackCoords="interpolatedSegment" @highlight-xvalue="xValue = $event"
-        :point-distance=POINT_DISTANCE />
+      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="interpolatedSegment"
+        @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE />
     </div>
   </div>
 </template>

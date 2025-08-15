@@ -33,6 +33,10 @@ const props = defineProps<{
   lineStringF: GeoJsonFeature<GeoJsonLineString> | null;
 }>();
 
+const emit = defineEmits<{
+  (e: 'hoverIndex', index: number): void;
+}>();
+
 const markerSource = new VectorSource();
 const markerLayer = new VectorLayer({
   source: markerSource,
@@ -101,6 +105,29 @@ onMounted(async () => {
     }
 
   }
+
+  // add listener to identify mouse near track
+  map.on('pointermove', evt => {
+    const coordinate = map.getCoordinateFromPixel(evt.pixel);
+
+    let minDist = Infinity;
+    let closestIndex = -1;
+
+    props.lineStringF?.geometry.coordinates.forEach((coord, i) => {
+      const projected = fromLonLat([coord[0], coord[1]]);
+      const dx = projected[0] - coordinate[0];
+      const dy = projected[1] - coordinate[1];
+      const dist = dx * dx + dy * dy;
+      if (dist < minDist) {
+        minDist = dist;
+        closestIndex = i;
+      }
+    });
+
+    if (closestIndex !== -1) {
+      emit('hoverIndex', closestIndex);
+    }
+  });
 });
 
 watch(() => props.lineStringF, (lineString) => {

@@ -8,4 +8,9 @@ declare module 'chart.js' {
       data: AreaProperties[];
     };
   }
+  interface PluginOptionsByType {
+    verticalLinePlugin?: {
+      xPositionManualDraw: number | null;
+    };
+  }
 }
