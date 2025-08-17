@@ -30,6 +30,7 @@
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
     "@types/geojson": "^7946.0.16",
+    "@types/geokdbush": "^1.1.5",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.16.5",
     "@types/ol": "^6.5.3",
