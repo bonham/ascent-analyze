@@ -22,9 +22,13 @@ import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 
 import Point from 'ol/geom/Point';
 import type { LineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
+import { TrackPointIndex } from './lib/TrackPointIndex';
+
 
 let map: Map;
 const vectorSource = new VectorSource()
+
+let tpIndex: TrackPointIndex | undefined
 
 const mapContainer = ref<HTMLDivElement | null>(null);
 
@@ -113,6 +117,9 @@ onMounted(async () => {
     let minDist = Infinity;
     let closestIndex = -1;
 
+    if (tpIndex) {
+      closestIndex = tpIndex.getNearestIndex({ lon: coordinate[0], lat: coordinate[1] }) ?? -1
+    }
     props.lineStringF?.geometry.coordinates.forEach((coord, i) => {
       const projected = fromLonLat([coord[0], coord[1]]);
       const dx = projected[0] - coordinate[0];
@@ -139,6 +146,11 @@ watch(() => props.lineStringF, (lineString) => {
       featureProjection: 'EPSG:3857'
     }
   )
+
+  // Create point geographic index
+  const points = lineString.geometry.coordinates.map(e => ({ lon: e[0], lat: e[1] }))
+  tpIndex = new TrackPointIndex(points)
+
   // make array and convert types
   vectorSource.addFeature(feature as unknown as Feature<LineString>)
 

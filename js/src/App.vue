@@ -10,7 +10,7 @@ import type { FeatureCollection, Feature, LineString } from 'geojson';
 import { Track2GeoJson } from './lib/Track2GeoJson';
 
 
-const POINT_DISTANCE = 1000; // Distance in meters for equidistant points
+const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 
 const lineStringFeature = ref<Feature<LineString> | null>(null)
 const interpolatedSegment = ref<TrackSegmentWithDistance>([])

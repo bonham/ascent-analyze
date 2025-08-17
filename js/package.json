@@ -21,6 +21,8 @@
     "bootstrap": "^5.3.7",
     "chart.js": "^4.5.0",
     "commons-math-interpolation": "^2.2.3",
+    "geokdbush": "^2.0.1",
+    "kdbush": "^4.0.2",
     "ol": "^10.6.1",
     "pinia": "^3.0.3",
     "vue": "^3.5.18"

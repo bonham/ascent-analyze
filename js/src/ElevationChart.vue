@@ -15,6 +15,8 @@ import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
 
 
+
+
 // 👇 Define props using defineProps
 const props = defineProps<{
   trackCoords: TrackSegment; // TrackSegment with equidistant points
@@ -31,6 +33,8 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 // 👇 Chart instance holder
 let chartInstance: Chart<'line'> | null = null;
+
+
 
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
 
