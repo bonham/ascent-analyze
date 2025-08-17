@@ -1,15 +1,17 @@
 
 import VectorSource from 'ol/source/Vector';
-import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
 import Feature from 'ol/Feature';
 import type { Geometry } from 'ol/geom';
-import { fromLonLat } from 'ol/proj';
 import Point from 'ol/geom/Point';
+import type { Coordinate } from 'ol/coordinate';
 
+/**
+ * Class to draw and clear a marker by index on a linestring 
+ */
 class MarkerOnTrack {
 
   markerSource: VectorSource<Feature<Geometry>>;
-  trackLineString: GeoJsonFeature<GeoJsonLineString> | null = null
+  coordinates: Coordinate[] | null = null
 
   constructor(
     vSource: VectorSource<Feature<Geometry>>,
@@ -17,8 +19,12 @@ class MarkerOnTrack {
     this.markerSource = vSource
   }
 
-  setLineString(lineString: GeoJsonFeature<GeoJsonLineString>) {
-    this.trackLineString = lineString
+  /**
+   * Sets the array of points to set marker on
+   * @param coordinates Array of [ x, y ]. Should be in same projection as map ( usually EPSG:3857)
+   */
+  setCoordinates(coordinates: Coordinate[]) {
+    this.coordinates = coordinates
   }
 
   clear() {
@@ -28,16 +34,14 @@ class MarkerOnTrack {
   setByIndex(newXposIndex: number) {
 
     // Obtain track coordinates
-    if (this.trackLineString === null) {
-      console.warn("Linestring not yet set")
+    if (this.coordinates === null) {
+      console.warn("Coordinates not yet set")
       return
     }
 
-    const trackPoints = this.trackLineString.geometry.coordinates
-
-    const coord = trackPoints[newXposIndex]; // [lon, lat, elev]
+    const coord = this.coordinates[newXposIndex]; // [x, y][]
     if (coord === undefined) { // index out of bounds
-      console.warn(`Index ${newXposIndex} out of bound for track`)
+      // console.warn(`Index ${newXposIndex} out of bound for track`)
       return
     }
 
@@ -45,9 +49,8 @@ class MarkerOnTrack {
     this.markerSource.clear(); // Remove old marker
 
     // prepare feature for ol layer
-    const projected = fromLonLat([coord[0], coord[1]]);
     const marker = new Feature({
-      geometry: new Point(projected)
+      geometry: new Point(coord)
     });
 
     this.markerSource.addFeature(marker); // Add new marker

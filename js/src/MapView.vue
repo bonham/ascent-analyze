@@ -11,12 +11,11 @@ import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
-import { getCenter } from 'ol/extent';
 import Style from 'ol/style/Style';
 import Stroke from 'ol/style/Stroke';
 import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
-import { fromLonLat } from 'ol/proj';
+import { fromLonLat, transform } from 'ol/proj';
 import Feature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
 import type { LineString } from 'ol/geom';
@@ -26,8 +25,6 @@ import { MarkerOnTrack } from './lib/mapViewHelpers'
 
 
 let map: Map;
-const vectorSource = new VectorSource()
-
 let tpIndex: TrackPointIndex | undefined
 
 const mapContainer = ref<HTMLDivElement | null>(null);
@@ -52,25 +49,14 @@ const markerLayer = new VectorLayer({
   })
 });
 const marker = new MarkerOnTrack(markerSource)
+const trackVectorSource = new VectorSource()
 
+// -----------------------------------------------------------------
 onMounted(async () => {
+
+
+  // ---- setup layer
   if (!mapContainer.value) return;
-
-
-  // only add feature to source if we have data:
-  if (props.lineStringF !== null) {
-
-    const feature = new GeoJSON().readFeature(
-      props.lineStringF,
-      {
-        featureProjection: 'EPSG:3857'
-      }
-    )
-    // make array and convert types
-    vectorSource.addFeature(feature as unknown as Feature<LineString>)
-  }
-
-
 
   const trackStyle = new Style({
     stroke: new Stroke({
@@ -80,37 +66,72 @@ onMounted(async () => {
   });
 
   const vectorLayer = new VectorLayer({
-    source: vectorSource,
+    source: trackVectorSource,
     style: trackStyle      // Apply the custom style
   });
 
   const defaultCenter = fromLonLat([0, 0]); // Center on Null Island 🌍
   const defaultZoom = 2;                    // World view
 
+  // ---- setup map
   map = new Map({
     target: mapContainer.value,
     layers: [
       new TileLayer({ source: new OSM() }),
       vectorLayer
     ],
-    view: new View({
+    view: new View({ // default projection is EPSG:3857
       center: defaultCenter,
       zoom: defaultZoom
     })
   });
   map.addLayer(markerLayer);
 
-  // Automatically fit the view to the extent of the vector data
-  if (props.lineStringF !== null) {
-    const extent = vectorSource.getExtent();
-    if (!isEmpty(extent)) {
-      map.getView().setCenter(getCenter(extent))
-      map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+  // ------- watcher to update track 
+  watch(() => props.lineStringF, (lineString) => {
+    if (lineString === null) return
+
+    // incoming format: EPSG:3857 ( gpx )
+    const mapFeature = new GeoJSON().readFeature(
+      lineString,
+      {
+        dataProjection: 'EPSG:4326', // lat lon
+        featureProjection: 'EPSG:3857' // projection of map
+      }
+    ) as Feature<LineString>
+
+    const mapCoordinates = mapFeature.getGeometry()!.getCoordinates() // 3857
+
+    // make array and convert types
+    trackVectorSource.clear()
+    trackVectorSource.addFeature(mapFeature)
+
+    // initialize marker
+    marker.setCoordinates(mapCoordinates)
+
+    // Update TrackpointIndex
+    const points = mapCoordinates.map(coord => {
+      // convert to epsg 4326
+      const [lon, lat] = transform(coord, 'EPSG:3857', 'EPSG:4326');
+      return { lon, lat };
+    })
+    tpIndex = new TrackPointIndex(points)
+
+    if (map) {
+      const extent = trackVectorSource.getExtent();
+      if (!isEmpty(extent)) {
+        map.getView().fit(extent, {
+          padding: [50, 50, 50, 50],
+          maxZoom: 17,
+          duration: 1000
+        });
+        map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+      }
     }
 
-  }
+  })
 
-  // Watch for commands from outside component to draw / move the point marker on the track
+  // ---- Watch for commands from outside component to draw / move the point marker on the track
   watch(() => props.highlightXpos, (newXposIndex) => {
 
     if (newXposIndex === null) {
@@ -134,28 +155,18 @@ onMounted(async () => {
 
   });
 
-
-
   // add listener to identify mouse near track
   map.on('pointermove', evt => {
     const coordinate = map.getCoordinateFromPixel(evt.pixel);
+    const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326');
 
-    let minDist = Infinity;
+    //let minDist = Infinity;
     let closestIndex = -1;
 
     if (tpIndex) {
-      closestIndex = tpIndex.getNearestIndex({ lon: coordinate[0], lat: coordinate[1] }) ?? -1
+      closestIndex = tpIndex.getNearestIndex({ lon, lat }) ?? -1
     }
-    props.lineStringF?.geometry.coordinates.forEach((coord, i) => {
-      const projected = fromLonLat([coord[0], coord[1]]);
-      const dx = projected[0] - coordinate[0];
-      const dy = projected[1] - coordinate[1];
-      const dist = dx * dx + dy * dy;
-      if (dist < minDist) {
-        minDist = dist;
-        closestIndex = i;
-      }
-    });
+
 
     if (closestIndex !== -1) {
       marker.setByIndex(closestIndex)
@@ -167,40 +178,7 @@ onMounted(async () => {
   });
 });
 
-watch(() => props.lineStringF, (lineString) => {
-  if (lineString === null) return
 
-  const feature = new GeoJSON().readFeature(
-    lineString,
-    {
-      featureProjection: 'EPSG:3857'
-    }
-  )
-
-  // initialize marker
-  marker.setLineString(lineString)
-
-
-  // Create point geographic index
-  const points = lineString.geometry.coordinates.map(e => ({ lon: e[0], lat: e[1] }))
-  tpIndex = new TrackPointIndex(points)
-
-  // make array and convert types
-  vectorSource.addFeature(feature as unknown as Feature<LineString>)
-
-  if (map) {
-    const extent = vectorSource.getExtent();
-    if (!isEmpty(extent)) {
-      map.getView().fit(extent, {
-        padding: [50, 50, 50, 50],
-        maxZoom: 17,
-        duration: 1000
-      });
-      map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
-    }
-  }
-
-})
 
 
 
