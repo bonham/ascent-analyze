@@ -100,7 +100,9 @@ onMounted(async () => {
       }
     ) as Feature<LineString>
 
-    const mapCoordinates = mapFeature.getGeometry()!.getCoordinates() // 3857
+    const geometry = mapFeature.getGeometry()
+    if (geometry === undefined) { return }
+    const mapCoordinates = geometry.getCoordinates() // 3857
 
     // make array and convert types
     trackVectorSource.clear()
