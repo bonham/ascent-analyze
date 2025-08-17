@@ -19,10 +19,10 @@ import Fill from 'ol/style/Fill';
 import { fromLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
-import Point from 'ol/geom/Point';
 import type { LineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
 import { TrackPointIndex } from './lib/TrackPointIndex';
+import { MarkerOnTrack } from './lib/mapViewHelpers'
 
 
 let map: Map;
@@ -51,7 +51,7 @@ const markerLayer = new VectorLayer({
     })
   })
 });
-
+const marker = new MarkerOnTrack(markerSource)
 
 onMounted(async () => {
   if (!mapContainer.value) return;
@@ -110,6 +110,32 @@ onMounted(async () => {
 
   }
 
+  // Watch for commands from outside component to draw / move the point marker on the track
+  watch(() => props.highlightXpos, (newXposIndex) => {
+
+    if (newXposIndex === null) {
+      console.warn('new x pos is null');
+      marker.clear();
+      return;
+    }
+
+    if (newXposIndex < 0) {
+      marker.clear(); // Clear marker if no valid index
+    }
+
+
+    // Obtain track coordinates
+    if (props.lineStringF === null) {
+      console.warn("LineString is null in MapViewProperty")
+      return
+    }
+
+    marker.setByIndex(newXposIndex)
+
+  });
+
+
+
   // add listener to identify mouse near track
   map.on('pointermove', evt => {
     const coordinate = map.getCoordinateFromPixel(evt.pixel);
@@ -132,8 +158,12 @@ onMounted(async () => {
     });
 
     if (closestIndex !== -1) {
+      marker.setByIndex(closestIndex)
       emit('hoverIndex', closestIndex);
+    } else {
+      marker.clear()
     }
+
   });
 });
 
@@ -141,11 +171,15 @@ watch(() => props.lineStringF, (lineString) => {
   if (lineString === null) return
 
   const feature = new GeoJSON().readFeature(
-    props.lineStringF,
+    lineString,
     {
       featureProjection: 'EPSG:3857'
     }
   )
+
+  // initialize marker
+  marker.setLineString(lineString)
+
 
   // Create point geographic index
   const points = lineString.geometry.coordinates.map(e => ({ lon: e[0], lat: e[1] }))
@@ -168,34 +202,7 @@ watch(() => props.lineStringF, (lineString) => {
 
 })
 
-watch(() => props.highlightXpos, (newXpos) => {
 
-  if (props.lineStringF === null) {
-    console.warn("LineString is null in MapViewProperty")
-    return
-  }
-  const coords = props.lineStringF.geometry.coordinates
-  // todo -we need to change data treatment to calculate distances when loading the track. also the ElevationChart needs to use explicit distances. 
-  // btw the dataset does not have equidistant points, so this is a bit of a hack. Need to spline interpolate the data to get equidistant points.
-
-  if (newXpos === null || !coords || newXpos < 0) {
-    console.warn('⛔ Invalid index for highlighting:', newXpos);
-    markerSource.clear(); // Clear marker if no valid index
-    return;
-  }
-  const coord = coords[newXpos]; // [lon, lat, elev]
-  if (!coord) return;
-
-  const projected = fromLonLat([coord[0], coord[1]]);
-
-  markerSource.clear(); // Remove old marker
-
-  const marker = new Feature({
-    geometry: new Point(projected)
-  });
-
-  markerSource.addFeature(marker); // Add new marker
-});
 
 </script>
 
