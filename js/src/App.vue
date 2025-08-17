@@ -13,9 +13,13 @@ import { Track2GeoJson } from './lib/Track2GeoJson';
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 
 const lineStringFeature = ref<Feature<LineString> | null>(null)
-const interpolatedSegment = ref<TrackSegmentWithDistance>([])
+const elevationChartSegment = ref<TrackSegmentWithDistance>([])
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
+
+// Interpolated full segment after initial load
+let initialSegmentEquidistant: TrackSegmentWithDistance
+
 
 // const maxDistance = ref<number>(0)
 
@@ -50,6 +54,8 @@ function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
 
 onMounted(async () => {
 
+  // loading the data should be done after mounted and all child components are ready ( chart, map )
+
   // Load the track data when the component is mounted
   let geojson: FeatureCollection<LineString>;
   try {
@@ -65,25 +71,56 @@ onMounted(async () => {
   // Only first segment is taken into account
   const segment = extractFirstSegmentFirstTrack(tracks)
 
-  // Interpolation
-  let segmentEquidistant: TrackSegmentWithDistance
   try {
-    segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+    // interpolate
+    initialSegmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
   } catch (e) {
     console.error('Failed to create equidistant segment:', e);
     return
   }
 
-  // not needed ?
-  // maxDistance.value = segmentEquidistant[segmentEquidistant.length - 1].distanceFromStart
 
-  interpolatedSegment.value = segmentEquidistant
-
-  // get geojson from interpolated segment
-  const interpolatedLineStringFeature = new Track2GeoJson(segmentEquidistant).toGeoJsonLineStringFeature()
-  lineStringFeature.value = interpolatedLineStringFeature
+  updateSubComponents(initialSegmentEquidistant)
 
 })
+
+function updateSubComponents(newTrack: TrackSegmentWithDistance) {
+  elevationChartSegment.value = newTrack
+
+  const newGeoJson = new Track2GeoJson(newTrack).toGeoJsonLineStringFeature()
+  lineStringFeature.value = newGeoJson
+}
+
+function zoomIn() {
+  if (initialSegmentEquidistant === undefined) return
+  const subSegment = initialSegmentEquidistant.slice(0, 20)
+  updateSubComponents(subSegment)
+}
+
+function zoomOut() {
+  if (initialSegmentEquidistant === undefined) return
+  updateSubComponents(initialSegmentEquidistant)
+}
+
+function handleZoomEvent(xValue: number, deltaY: number) {
+  if (deltaY > 0) {
+    zoomOut();
+  } else {
+    zoomIn();
+    console.log(deltaY)
+    console.log("xval:", xValue)
+
+    const desiredMiddle = xValue
+
+    const WINDOW = 31 // in index numbers
+    const half = Math.floor(WINDOW / 2)
+    const leftside = Math.max(0, desiredMiddle - half)
+    const rightside = Math.min(leftside + WINDOW, initialSegmentEquidistant.length - 1)
+
+    const zoomSegment = initialSegmentEquidistant.slice(leftside, rightside)
+    updateSubComponents(zoomSegment)
+  }
+}
 
 
 </script>
@@ -99,8 +136,12 @@ onMounted(async () => {
         @hover-index="mapViewMouseIndexValue = $event" />
     </div>
     <div class="row my-3">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="interpolatedSegment"
-        @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE />
+      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
+        @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
+    </div>
+    <div>
+      <button @click="zoomIn()">Zoom in</button>
+      <button @click="zoomOut()">Zoom out</button>
     </div>
   </div>
 </template>

@@ -26,6 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'highlight-xvalue', index: number): void;
+  (e: 'zoom', index: number, deltaY: number): void;
 }>();
 
 // 👇 Canvas reference
@@ -39,7 +40,7 @@ let chartInstance: Chart<'line'> | null = null;
 function updateChart(chartInstance: Chart, segment: TrackSegment) {
 
   const numDataPoints = segment.length
-  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance / 1000).toFixed(0))
+  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance / 1000).toFixed(1))
   const myDataset = segment.map((_) => _.elevation)
 
   chartInstance.data = {
@@ -143,11 +144,16 @@ onMounted(() => {
     plugins: [verticalLinePlugin, ascentFillPlugin]
   });
 
-  // Add mousemove event listener for highlighting points
+
+  // -------------------- event listeners
+
 
   if (chartInstance === null || !chartInstance) {
     console.warn('⛔ Chart instance is not initialized. Cannot add event listener');
   } else {
+
+    // Add mousemove event listener for highlighting points
+
     canvas.addEventListener('mousemove', (event) => {
       // Get mouse position relative to canvas
       const rect = canvas.getBoundingClientRect();
@@ -164,6 +170,25 @@ onMounted(() => {
       }
       emit('highlight-xvalue', xValue);
     })
+
+    canvas.addEventListener('wheel', (event) => {
+      // Get mouse position relative to canvas
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+
+      // Convert pixel position to x-axis value using chart scales
+      let xValue: number | undefined;
+      if (chartInstance) {
+        xValue = chartInstance.scales['x'].getValueForPixel(x);
+      }
+      if (xValue === undefined) {
+        console.warn('⛔ Unable to get xValue from pixel position.');
+        return;
+      }
+      emit('zoom', xValue, event.deltaY)
+
+    })
+
   }
   // watch vertical cursor external change
   watch(
