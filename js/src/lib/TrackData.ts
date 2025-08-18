@@ -2,8 +2,14 @@
 interface TrackPoint {
   lat: number;
   lon: number;
-  elevation: number; // Optional elevation
+  elevation: number;
 }
+
+interface TrackPointWithDistance extends TrackPoint {
+  distanceFromStart: number
+}
+
+type TrackSegmentWithDistance = TrackPointWithDistance[]
 
 // Define type for a segment (an array of points)
 type TrackSegment = TrackPoint[];
@@ -45,5 +51,98 @@ class TrackData {
   }
 }
 
-export { TrackData };
-export type { TrackPoint, TrackSegment };
+/**
+ * Class to provide slices with labels from original linestring
+ * Tracks always start from distance=0
+ */
+class TrackSegmentIndexed {
+
+  segment: TrackSegmentWithDistance
+  pointDistance: number
+  startIndex: number
+
+  pointsByIndex: { [key: number]: TrackPoint } = {}
+  arrayOfIndexedPoints: { index: number, point: TrackPointWithDistance }[] = []
+
+  /**
+   * Create TrackSegmentIndexed from TrackSegment
+   * @param track Track with equidistant points. User needs to ensure consistency with pointDistance.
+   * @param pointDistance Fixed distance of points. User needs to ensure constincency with track points.
+   * @param [startIndex=0] Optionally start from index > 0
+   */
+  constructor(track: TrackSegmentWithDistance, pointDistance: number, startIndex = 0) {
+    this.segment = track
+    this.pointDistance = pointDistance
+    this.startIndex = startIndex
+
+    track.forEach((tpoint, i) => {
+      const index = startIndex + i
+      this.pointsByIndex[index] = tpoint
+      this.arrayOfIndexedPoints.push({ index, point: tpoint })
+    })
+  }
+
+  getSegment() {
+    return this.segment
+  }
+
+  toInternalIndex(index: number) {
+    return index - this.startIndex
+  }
+
+  sliceSegmentByInternalIndex(start: number, end: number) {
+    return this.getSegment().slice(start, end)
+  }
+
+  sliceByInternalIndex(start: number, end: number) {
+    return new TrackSegmentIndexed(this.sliceSegmentByInternalIndex(start, end), this.pointDistance)
+  }
+
+  length() {
+    return this.arrayOfIndexedPoints.length
+  }
+
+  get(index: number) {
+    return this.pointsByIndex[index]
+  }
+
+  /**
+   * Slice by index ( could be index not starting by zero )
+   * @param start start
+   * @param end end
+   * @returns sliced
+   */
+  sliceSegment(start: number, end: number) {
+
+    const internalStart = this.toInternalIndex(start)
+    const internalEnd = this.toInternalIndex(end)
+
+    if (internalStart < 0 || internalStart >= this.length()) {
+      throw new Error(`Start out of bounds. ${start} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
+    }
+
+    if (internalEnd < 0 || internalEnd >= this.length()) {
+      throw new Error(`Start out of bounds. ${end} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
+    }
+
+    return this.segment.slice(
+      internalStart,
+      internalEnd
+    )
+  }
+
+  slice(start: number, end: number) {
+    const slicedSegment = this.sliceSegment(start, end)
+    return new TrackSegmentIndexed(slicedSegment, this.pointDistance, start)
+  }
+
+
+
+  indexList() {
+    return this.arrayOfIndexedPoints.map(e => e.index)
+  }
+
+}
+
+export { TrackData, TrackSegmentIndexed };
+export type { TrackPoint, TrackSegment, TrackPointWithDistance, TrackSegmentWithDistance };

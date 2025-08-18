@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
-import type { TrackSegment } from './lib/TrackData';
+import { TrackSegmentIndexed } from './lib/TrackData';
 import { createAreaProperties } from './lib/elevationChartHelpers'
 import type { ElevationPoint } from './lib/elevationChartHelpers';
 import { createAscentFillPlugin } from './lib/AscentFillPlugin';
@@ -19,7 +19,7 @@ import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
 
 // 👇 Define props using defineProps
 const props = defineProps<{
-  trackCoords: TrackSegment; // TrackSegment with equidistant points
+  trackCoords: TrackSegmentIndexed | null; // TrackSegment with equidistant points
   pointDistance: number;
   cursorIndex: number | null; // Vertical line cursor index value
 }>();
@@ -37,10 +37,11 @@ let chartInstance: Chart<'line'> | null = null;
 
 
 
-function updateChart(chartInstance: Chart, segment: TrackSegment) {
+function updateChart(chartInstance: Chart, segmentI: TrackSegmentIndexed) {
 
-  const numDataPoints = segment.length
-  const myLabels = Array.from({ length: numDataPoints }, (_, i) => (i * props.pointDistance / 1000).toFixed(1))
+  const indexList = segmentI.indexList()
+  const myLabels = indexList.map(e => (e * segmentI.pointDistance / 1000).toFixed(1))
+  const segment = segmentI.getSegment()
   const myDataset = segment.map((_) => _.elevation)
 
   chartInstance.data = {
@@ -63,16 +64,17 @@ function updateChart(chartInstance: Chart, segment: TrackSegment) {
 // 🧭 Log whenever trackCoords changes
 watch(
   () => props.trackCoords,
-  (newTrackSegment) => {
+  (newTrackSegmentI) => {
     //console.log('🟦 Track coordinates updated:', newTrackSegment);
-
+    if (newTrackSegmentI === null) return
+    const newTrackSegment = newTrackSegmentI.getSegment()
     // Optionally update chart if it already exists
     if (chartInstance === null) {
       console.warn("chartInstance is null")
     } else if (newTrackSegment.length === 0) {
       console.warn("TrackSegment has null length")
     } else {
-      updateChart(chartInstance, newTrackSegment)
+      updateChart(chartInstance, newTrackSegmentI)
     }
   },
   { immediate: false }

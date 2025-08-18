@@ -5,6 +5,7 @@ import type { Geometry } from 'ol/geom';
 import Point from 'ol/geom/Point';
 import type { Coordinate } from 'ol/coordinate';
 
+
 /**
  * Class to draw and clear a marker by index on a linestring 
  */
@@ -57,5 +58,7 @@ class MarkerOnTrack {
   }
 
 }
+
+
 
 export { MarkerOnTrack }

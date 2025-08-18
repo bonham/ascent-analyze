@@ -1,9 +1,8 @@
 import { createInterpolatorWithFallback } from "commons-math-interpolation";
 import { haversineDistance } from './haversine';
-import type { TrackSegment, TrackPoint } from './TrackData';
+import type { TrackSegment, TrackPointWithDistance, TrackSegmentWithDistance } from './TrackData';
 
-type TrackPointWithDistance = TrackPoint & { distanceFromStart: number };
-type TrackSegmentWithDistance = TrackPointWithDistance[];
+
 
 const InterpolationMethod = "akima";
 
@@ -50,4 +49,3 @@ function makeEquidistantTrackAkima(coords: TrackSegment, interval: number): Trac
 }
 
 export { makeEquidistantTrackAkima };
-export type { TrackPointWithDistance, TrackSegmentWithDistance }

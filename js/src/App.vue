@@ -3,25 +3,24 @@ import MapView from './MapView.vue';
 import ElevationChart from './ElevationChart.vue';
 import { ref, onMounted } from 'vue';
 import { GeoJsonLoader } from './lib/GeoJsonLoader';
+import { TrackSegmentIndexed } from './lib/TrackData'
 import type { TrackData, TrackSegment } from './lib/TrackData'
 import { makeEquidistantTrackAkima } from './lib/InterpolateSegment';
-import type { TrackSegmentWithDistance } from './lib/InterpolateSegment';
 import type { FeatureCollection, Feature, LineString } from 'geojson';
 import { Track2GeoJson } from './lib/Track2GeoJson';
 
 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
+const ZOOMWINDOW = 31 // in index numbers
+
 
 const lineStringFeature = ref<Feature<LineString> | null>(null)
-const elevationChartSegment = ref<TrackSegmentWithDistance>([])
+const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 
 // Interpolated full segment after initial load
-let initialSegmentEquidistant: TrackSegmentWithDistance
-
-
-// const maxDistance = ref<number>(0)
+let initialSegmentIndexed: TrackSegmentIndexed
 
 // Load a geojson file
 async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
@@ -73,52 +72,50 @@ onMounted(async () => {
 
   try {
     // interpolate
-    initialSegmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+    const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+    initialSegmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
   } catch (e) {
     console.error('Failed to create equidistant segment:', e);
     return
   }
 
 
-  updateSubComponents(initialSegmentEquidistant)
+  updateSubComponents(initialSegmentIndexed)
 
 })
 
-function updateSubComponents(newTrack: TrackSegmentWithDistance) {
+function updateSubComponents(newTrack: TrackSegmentIndexed) {
   elevationChartSegment.value = newTrack
 
-  const newGeoJson = new Track2GeoJson(newTrack).toGeoJsonLineStringFeature()
+  const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
   lineStringFeature.value = newGeoJson
 }
 
-function zoomIn() {
-  if (initialSegmentEquidistant === undefined) return
-  const subSegment = initialSegmentEquidistant.slice(0, 20)
-  updateSubComponents(subSegment)
+function zoomIn(xValue: number) {
+  if (initialSegmentIndexed === undefined) return
+
+  console.log("xval:", xValue)
+
+  const desiredMiddle = xValue
+
+  const half = Math.floor(ZOOMWINDOW / 2)
+  const leftside = Math.max(0, desiredMiddle - half)
+  const rightside = Math.min(leftside + ZOOMWINDOW, initialSegmentIndexed.length() - 1)
+
+  const zoomSegment = initialSegmentIndexed.slice(leftside, rightside)
+  updateSubComponents(zoomSegment)
 }
 
 function zoomOut() {
-  if (initialSegmentEquidistant === undefined) return
-  updateSubComponents(initialSegmentEquidistant)
+  if (initialSegmentIndexed === undefined) return
+  updateSubComponents(initialSegmentIndexed)
 }
 
 function handleZoomEvent(xValue: number, deltaY: number) {
   if (deltaY > 0) {
     zoomOut();
   } else {
-    zoomIn();
-    console.log(deltaY)
-    console.log("xval:", xValue)
-
-    const desiredMiddle = xValue
-
-    const WINDOW = 31 // in index numbers
-    const half = Math.floor(WINDOW / 2)
-    const leftside = Math.max(0, desiredMiddle - half)
-    const rightside = Math.min(leftside + WINDOW, initialSegmentEquidistant.length - 1)
-
-    const zoomSegment = initialSegmentEquidistant.slice(leftside, rightside)
-    updateSubComponents(zoomSegment)
+    zoomIn(xValue);
   }
 }
 
@@ -140,7 +137,7 @@ function handleZoomEvent(xValue: number, deltaY: number) {
         @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
     <div>
-      <button @click="zoomIn()">Zoom in</button>
+      <button @click="zoomIn(15)">Zoom in</button>
       <button @click="zoomOut()">Zoom out</button>
     </div>
   </div>
