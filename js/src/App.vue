@@ -21,6 +21,7 @@ const mapViewMouseIndexValue = ref<number | null>(null);
 
 // Interpolated full segment after initial load
 let initialSegmentIndexed: TrackSegmentIndexed
+let currentSegmentIndexed: TrackSegmentIndexed
 
 // Load a geojson file
 async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
@@ -74,6 +75,7 @@ onMounted(async () => {
     // interpolate
     const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
     initialSegmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
+    currentSegmentIndexed = initialSegmentIndexed
   } catch (e) {
     console.error('Failed to create equidistant segment:', e);
     return
@@ -85,6 +87,7 @@ onMounted(async () => {
 })
 
 function updateSubComponents(newTrack: TrackSegmentIndexed) {
+  currentSegmentIndexed = newTrack
   elevationChartSegment.value = newTrack
 
   const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
@@ -92,18 +95,19 @@ function updateSubComponents(newTrack: TrackSegmentIndexed) {
 }
 
 function zoomIn(xValue: number) {
-  if (initialSegmentIndexed === undefined) return
+  if (currentSegmentIndexed === undefined) return
+  const zoomStartSegment = currentSegmentIndexed
 
   console.log("xval:", xValue)
 
-  const desiredMiddle = xValue
+  const desiredMiddle = xValue + zoomStartSegment.startIndex // xvalue is index starting from zero ( chart coordinate system ) and needs to be converted to virtual index
 
   const half = Math.floor(ZOOMWINDOW / 2)
-  const leftside = Math.max(0, desiredMiddle - half)
-  const rightside = Math.min(leftside + ZOOMWINDOW, initialSegmentIndexed.length() - 1)
+  const leftside = Math.max(zoomStartSegment.minIndex(), desiredMiddle - half)
+  const rightside = Math.min(leftside + ZOOMWINDOW, zoomStartSegment.maxIndex())
 
-  const zoomSegment = initialSegmentIndexed.slice(leftside, rightside)
-  updateSubComponents(zoomSegment)
+  const zoomTargetSegment = zoomStartSegment.slice(leftside, rightside)
+  updateSubComponents(zoomTargetSegment)
 }
 
 function zoomOut() {

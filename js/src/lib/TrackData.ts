@@ -86,8 +86,22 @@ class TrackSegmentIndexed {
     return this.segment
   }
 
+  /**
+   * Converts from virtual to internal index
+   * @param index Virtual index
+   * @returns Internal Index
+   */
   toInternalIndex(index: number) {
     return index - this.startIndex
+  }
+
+  /**
+   * Converts from internal to virtual index
+   * @param index Internal index
+   * @returns Virtual Index
+   */
+  toVirtualIndex(index: number) {
+    return index + this.startIndex
   }
 
   sliceSegmentByInternalIndex(start: number, end: number) {
@@ -95,11 +109,21 @@ class TrackSegmentIndexed {
   }
 
   sliceByInternalIndex(start: number, end: number) {
-    return new TrackSegmentIndexed(this.sliceSegmentByInternalIndex(start, end), this.pointDistance)
+    const startVirtual = this.toVirtualIndex(start)
+    return new TrackSegmentIndexed(this.sliceSegmentByInternalIndex(start, end), this.pointDistance, startVirtual)
   }
 
   length() {
     return this.arrayOfIndexedPoints.length
+  }
+
+  minIndex() {
+    return this.arrayOfIndexedPoints[0].index
+  }
+
+  maxIndex() {
+    const length = this.arrayOfIndexedPoints.length
+    return this.arrayOfIndexedPoints[length - 1].index
   }
 
   get(index: number) {
