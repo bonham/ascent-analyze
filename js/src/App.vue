@@ -116,6 +116,7 @@ function zoomOut() {
 }
 
 function handleZoomEvent(xValue: number, deltaY: number) {
+  console.log("DeltaY", deltaY)
   if (deltaY > 0) {
     zoomOut();
   } else {
