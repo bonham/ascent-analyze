@@ -160,12 +160,30 @@ class TrackSegmentIndexed {
     return new TrackSegmentIndexed(slicedSegment, this.pointDistance, start)
   }
 
-
-
   indexList() {
     return this.arrayOfIndexedPoints.map(e => e.index)
   }
 
+  /**
+   * Zooms into the array and returns 
+   * 
+   * @param midpoint Midpoint in internal index coordinates
+   * @param factor Zoom factor
+   */
+  zoom(midpointInternalIndex: number, factor: number) {
+
+    const origIndexes = this.indexList()
+    const numLeft = midpointInternalIndex
+    const numRight = origIndexes.length - numLeft - 1
+
+    const numLeftZoom = Math.round(numLeft * factor)
+    const numRightZoom = Math.round(numRight * factor)
+
+    const leftStartInternal = midpointInternalIndex - numLeftZoom
+    const rightEndInternal = midpointInternalIndex + numRightZoom
+
+    return this.sliceByInternalIndex(leftStartInternal, rightEndInternal + 1) // right slice is +1
+  }
 }
 
 export { TrackData, TrackSegmentIndexed };
