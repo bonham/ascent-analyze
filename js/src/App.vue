@@ -8,11 +8,11 @@ import type { TrackData, TrackSegment } from './lib/TrackData'
 import { makeEquidistantTrackAkima } from './lib/InterpolateSegment';
 import type { FeatureCollection, Feature, LineString } from 'geojson';
 import { Track2GeoJson } from './lib/Track2GeoJson';
+import { ZoomEventQueue, ZoomManager } from './lib/appHelpers';
 
 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
-const ZOOMWINDOW = 31 // in index numbers
-
+//const ZOOMWINDOW = 31 // in index numbers
 
 const lineStringFeature = ref<Feature<LineString> | null>(null)
 const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
@@ -21,7 +21,7 @@ const mapViewMouseIndexValue = ref<number | null>(null);
 
 // Interpolated full segment after initial load
 let initialSegmentIndexed: TrackSegmentIndexed
-let currentSegmentIndexed: TrackSegmentIndexed
+let zoomQueue: ZoomEventQueue
 
 // Load a geojson file
 async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
@@ -75,53 +75,54 @@ onMounted(async () => {
     // interpolate
     const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
     initialSegmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
-    currentSegmentIndexed = initialSegmentIndexed
   } catch (e) {
     console.error('Failed to create equidistant segment:', e);
     return
   }
-
+  const zoomManager = new ZoomManager(initialSegmentIndexed)
+  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
+    const newSegment = zoomManager.applyFactor(centerIndex, factor)
+    updateSubComponents(newSegment)
+  })
 
   updateSubComponents(initialSegmentIndexed)
 
 })
 
+/**
+ * Updates both - Map and elevation chart
+ * @param newTrack New indexed track to use for updating 
+ */
 function updateSubComponents(newTrack: TrackSegmentIndexed) {
-  currentSegmentIndexed = newTrack
   elevationChartSegment.value = newTrack
 
   const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
   lineStringFeature.value = newGeoJson
 }
 
-function zoomIn(xValue: number) {
-  if (currentSegmentIndexed === undefined) return
-  const zoomStartSegment = currentSegmentIndexed
-
-  console.log("xval:", xValue)
-
-  const desiredMiddle = xValue + zoomStartSegment.startIndex // xvalue is index starting from zero ( chart coordinate system ) and needs to be converted to virtual index
-
-  const half = Math.floor(ZOOMWINDOW / 2)
-  const leftside = Math.max(zoomStartSegment.minIndex(), desiredMiddle - half)
-  const rightside = Math.min(leftside + ZOOMWINDOW, zoomStartSegment.maxIndex())
-
-  const zoomTargetSegment = zoomStartSegment.slice(leftside, rightside)
-  updateSubComponents(zoomTargetSegment)
-}
-
-function zoomOut() {
-  if (initialSegmentIndexed === undefined) return
-  updateSubComponents(initialSegmentIndexed)
-}
-
+/**
+ * Handles event from elevation chart component
+ * 
+ * @param xValue index number of mouse position in chart
+ * @param deltaY mouse wheel scroll value
+ */
 function handleZoomEvent(xValue: number, deltaY: number) {
-  console.log("DeltaY", deltaY)
+
+  if (zoomQueue === undefined) return
+
+  const INCREMENT_FACTOR = 0.9
+  const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
+  let incrementalZoomFactor: number
+
   if (deltaY > 0) {
-    zoomOut();
+    // zoom out
+    incrementalZoomFactor = Math.abs(deltaY) / (INCREMENT_FACTOR * DELTA_Y_NORM)
   } else {
-    zoomIn(xValue);
+    // zoom in
+    incrementalZoomFactor = INCREMENT_FACTOR * Math.abs(deltaY) / DELTA_Y_NORM
   }
+  console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor)
+  zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 
 
@@ -140,10 +141,6 @@ function handleZoomEvent(xValue: number, deltaY: number) {
     <div class="row my-3">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
         @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
-    </div>
-    <div>
-      <button @click="zoomIn(15)">Zoom in</button>
-      <button @click="zoomOut()">Zoom out</button>
     </div>
   </div>
 </template>

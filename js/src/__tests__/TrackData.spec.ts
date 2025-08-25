@@ -92,7 +92,14 @@ describe("TrackSegmentIndexed", () => {
     expect(tsi.get(16)).toBeUndefined()
   })
 
-  test("Zoom", () => {
+  test("Zoom 1", () => {
+    const initial = new TrackSegmentIndexed(track1, 100)
+    const zoomed = initial.zoom(3, 1)
+    const zoomedIndex = zoomed.indexList()
+    expect(zoomedIndex).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  test("Zoom 0.6", () => {
     const initial = new TrackSegmentIndexed(track1, 100)
     const zoomed = initial.zoom(3, 0.6)
     const zoomedIndex = zoomed.indexList()
