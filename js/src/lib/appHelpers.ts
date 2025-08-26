@@ -6,7 +6,7 @@ import throttle from 'lodash/throttle'
  */
 class ZoomManager {
   fullSegment: TrackSegmentIndexed
-  currentZoomFactor: number = 1
+  //currentZoomFactor: number = 1
   currentSegment: TrackSegmentIndexed
 
   constructor(fullSegment: TrackSegmentIndexed) {
@@ -14,24 +14,38 @@ class ZoomManager {
     this.currentSegment = fullSegment
   }
 
-  currentFactor() {
-    return this.currentZoomFactor
-  }
+  // currentFactor() {
+  //   return this.currentZoomFactor
+  // }
 
+  /**
+   * Returns zoomed indexed segment
+   * 
+   * @param centerIndex Center of zoom
+   * @param factor Zoom factor ( 0 < factor <= 1 )
+   * @returns Zoomed Indexed segment
+   */
   applyFactor(centerIndex: number, factor: number) {
-    const newFactor = this.currentZoomFactor * factor
-    // factor can be maximum 1
-    this.currentZoomFactor = Math.min(newFactor, 1)
-    const newSegment = this.currentSegment.zoom(centerIndex, factor)
-    this.currentSegment = newSegment
-    return newSegment
+    // const newFactor = this.currentZoomFactor * factor // ??
+    // factor can be maximum 1 ( should yield fullSegment )
+    // this.currentZoomFactor = Math.min(newFactor, 1)
+
+    // zoom logic
+    const I_min = this.fullSegment.minIndex()
+    const I_max = this.fullSegment.maxIndex()
+    const current_start = this.currentSegment.minIndex()
+    const current_end = this.currentSegment.maxIndex()
+
+    const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, centerIndex, factor, I_min, I_max)
+    const zoomedIndexedSegment = this.fullSegment.slice(newStart, newEnd + 1)
+    return zoomedIndexedSegment
   }
   /**
    * Returns initial segment
    */
   reset() {
     this.currentSegment = this.fullSegment
-    this.currentZoomFactor = 1
+    //  this.currentZoomFactor = 1
     return this.fullSegment
   }
 }
@@ -75,30 +89,34 @@ class ZoomEventQueue {
 
 /**
  * Will stretch an interval of consecutive integers with stretch factor > 0 and mid point m. Stretching could not go beyond base interval 0 .. I_max
- * @param I_max Max value in base interval
- * @param k Min boundary of start interval
- * @param l Max boundary of start interval (included)
- * @param m Mid value for stretching
- * @param f Stretch factor
+ * 
+ * Algorithm tries to keep mid point exactly by adjusting length of new array to nearest odd integer.
+ * This means that stretch factor is not always achieved exactly.
+ * 
+ * @param i_start Min boundary of start interval
+ * @param i_end Max boundary of start interval (included)
+ * @param mid Mid value for stretching
+ * @param factor Stretch factor
+ * @param [min=0] Minimum value of start
+ * @param [max=Infinity] Maximum value of end
  * @returns Object { start: v1, end: v2 } Boundaries of stretched interval
  */
-function stretchInterval(I_max: number, k: number, l: number, m: number, f: number) {
+function stretchInterval(i_start: number, i_end: number, mid: number, factor: number, min = 0, max = Infinity) {
   // Ursprüngliche Länge
-  const originalLength = l - k + 1;
+  const originalLength = i_end - i_start + 1;
 
   // Neue gestreckte Länge
-  const newLength = Math.round(originalLength * f);
+  const newLength = roundToNextOdd(originalLength * factor);
 
-  // Berechne neue Grenzen um den Mittelpunkt m
-  const halfLength = Math.floor(newLength / 2);
-  let new_k = m - halfLength;
-  let new_l = m + (newLength - halfLength - 1);
+  // Berechne neue Grenzen um den Mittelpunkt mid
+  let new_start = mid + (1 - newLength) / 2;
+  let new_end = mid + (newLength - 1) / 2;
 
   // Begrenzung auf das Intervall I = [0, I_max]
-  new_k = Math.max(0, new_k);
-  new_l = Math.min(I_max, new_l);
+  new_start = Math.max(min, new_start);
+  new_end = Math.min(max, new_end);
 
-  return { start: new_k, end: new_l };
+  return { start: new_start, end: new_end };
 }
 
 /**

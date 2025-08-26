@@ -133,7 +133,7 @@ class TrackSegmentIndexed {
   /**
    * Slice by index ( could be index not starting by zero )
    * @param start start
-   * @param end end
+   * @param end end ( not included )
    * @returns sliced
    */
   sliceSegment(start: number, end: number) {
@@ -141,11 +141,11 @@ class TrackSegmentIndexed {
     const internalStart = this.toInternalIndex(start)
     const internalEnd = this.toInternalIndex(end)
 
-    if (internalStart < 0 || internalStart >= this.length()) {
+    if (internalStart < 0 || internalStart > this.length() + 1) {
       throw new Error(`Start out of bounds. ${start} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
     }
 
-    if (internalEnd < 0 || internalEnd >= this.length()) {
+    if (internalEnd < 0 || internalEnd > this.length() + 1) {
       throw new Error(`Start out of bounds. ${end} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
     }
 
