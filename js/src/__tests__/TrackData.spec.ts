@@ -69,6 +69,20 @@ describe("TrackSegmentIndexed", () => {
 
   })
 
+  test("Slice 2", () => {
+    const initial = new TrackSegmentIndexed(track1, 100)
+    const tsi = initial.slice(0, 0)
+    expect(tsi.length()).toBe(0)
+    expect(tsi.indexList()).toEqual([])
+    expect(tsi.getSegment()).toEqual([])
+  })
+
+  test("Slice throw", () => {
+    const initial = new TrackSegmentIndexed(track1, 100)
+    expect(() => initial.slice(0, 11)).toThrow(/bounds/)
+    expect(() => initial.slice(-1, 11)).toThrow(/bounds/)
+  })
+
   test("Startindex", () => {
     const tsi = new TrackSegmentIndexed(track1, 100, 11)
 

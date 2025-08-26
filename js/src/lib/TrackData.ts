@@ -145,7 +145,7 @@ class TrackSegmentIndexed {
       throw new Error(`Start out of bounds. ${start} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
     }
 
-    if (internalEnd < 0 || internalEnd > this.length() + 1) {
+    if (internalEnd < 0 || internalEnd > this.length()) {
       throw new Error(`Start out of bounds. ${end} is not within ${this.startIndex} and ${this.startIndex + this.length()}`)
     }
 
