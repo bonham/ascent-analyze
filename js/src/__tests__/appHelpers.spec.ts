@@ -11,9 +11,7 @@ describe("AppHelpers", () => {
     const m = 45;
     const f = 1.3;
     const { start, end } = stretchInterval(k, l, m, f);
-    const length = end - start + 1;
-    expect(length).toBe(15);
-    expect(start).toEqual(38);
+    expect(start).toEqual(39);
     expect(end).toEqual(52);
   })
 
@@ -25,15 +23,33 @@ describe("AppHelpers", () => {
     const i_min = 0;
     const i_max = 9
 
-    // length would be 10, but rounded to 11 - around 5 with min 0 and max 10. 
-    // Then needs to be cut to be within min max - which cuts it down to 0,9 - length 10
-
     const { start, end } = stretchInterval(k, l, m, f, i_min, i_max);
-    const length = end - start + 1;
-    expect(length).toBe(10);
     expect(start).toEqual(0);
     expect(end).toEqual(9);
   })
+
+  test("stretch_interval 3", () => {
+    const k = 0;
+    const l = 100;
+    const m = 10;
+    const f = 0.133;
+
+    const { start, end } = stretchInterval(k, l, m, f);
+    expect(start).toEqual(9);
+    expect(end).toEqual(22);
+  })
+
+  test("stretch_interval 4", () => {
+    const k = 2;
+    const l = 10;
+    const m = 4;
+    const f = 0.5;
+
+    const { start, end } = stretchInterval(k, l, m, f);
+    expect(start).toEqual(3);
+    expect(end).toEqual(7);
+  })
+
 })
 
 describe("Round to next odd 2", () => {

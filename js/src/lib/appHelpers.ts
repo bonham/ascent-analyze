@@ -1,5 +1,6 @@
 import { TrackSegmentIndexed } from './TrackData'
 import throttle from 'lodash/throttle'
+const { round, max, min } = Math
 
 /**
  * Starting from initial full  segment this class applies zoom factors to existing state.
@@ -21,24 +22,53 @@ class ZoomManager {
   /**
    * Returns zoomed indexed segment
    * 
-   * @param centerIndex Center of zoom
+   * @param virtualCenterIndex Center of zoom
    * @param factor Zoom factor ( 0 < factor <= 1 )
    * @returns Zoomed Indexed segment
    */
-  applyFactor(centerIndex: number, factor: number) {
+  applyFactor(virtualCenterIndex: number, factor: number) {
     // const newFactor = this.currentZoomFactor * factor // ??
     // factor can be maximum 1 ( should yield fullSegment )
     // this.currentZoomFactor = Math.min(newFactor, 1)
 
     // zoom logic
-    const I_min = this.fullSegment.minIndex()
-    const I_max = this.fullSegment.maxIndex()
-    const current_start = this.currentSegment.minIndex()
-    const current_end = this.currentSegment.maxIndex()
+    const cs = this.currentSegment
+    const fs = this.fullSegment
 
-    const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, centerIndex, factor, I_min, I_max)
-    const zoomedIndexedSegment = this.fullSegment.slice(newStart, newEnd + 1)
+    const I_min = fs.minIndex()
+    const I_max = fs.maxIndex()
+    const current_start = cs.minIndex()
+    const current_end = cs.maxIndex()
+
+    console.log(`Current virt boundaries: ${current_start}, ${current_end}`)
+    const cp = cs.get(virtualCenterIndex)
+    console.log(`cent vidx:${virtualCenterIndex}, iidx:${cs.toInternalIndex(virtualCenterIndex)}, ele:${cp.elevation}, dist:${cp.distanceFromStart}`)
+    console.log("Current Segment", cs)
+    const currentPercent = (virtualCenterIndex - current_start) / (current_end - current_start)
+    console.log("Current perc:", currentPercent)
+
+    const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, virtualCenterIndex, factor, I_min, I_max)
+    const zoomedPercent = (virtualCenterIndex - newStart) / (newEnd - newStart)
+    console.log("Zoomed perc:", zoomedPercent)
+
+    const zoomedIndexedSegment = cs.slice(newStart, newEnd + 1)
+
+    console.log(`New boundaries: ${newStart}, ${newEnd}, ${zoomedIndexedSegment.minIndex()}, ${zoomedIndexedSegment.maxIndex()},`)
+
+    zoomedIndexedSegment.arrayOfIndexedPoints.forEach(_ => {
+      if (_.point.elevation > 400) {
+        console.log(`Above 400 idx:${_.index} Dist:${_.point.distanceFromStart}`)
+      }
+    })
+
+    this.currentSegment = zoomedIndexedSegment
+    console.log("Zoomed Segment:", zoomedIndexedSegment)
     return zoomedIndexedSegment
+  }
+
+  applyFactorInternal(internalCenterIndex: number, factor: number) {
+    const virtualIdx = this.currentSegment.toVirtualIndex(internalCenterIndex)
+    return this.applyFactor(virtualIdx, factor)
   }
   /**
    * Returns initial segment
@@ -63,6 +93,10 @@ class ZoomEventQueue {
 
   throttledHandleZoom: () => void
 
+  /**
+   * 
+   * @param zoomFunction Function which takes internal index and zoom factor as arguments
+   */
   constructor(zoomFunction: ZoomFunction) {
     this.zoomFunction = zoomFunction
 
@@ -75,7 +109,11 @@ class ZoomEventQueue {
     }
     this.throttledHandleZoom = throttle(handleZoomBatched, 500, { leading: true, trailing: true })
   }
-
+  /**
+   * Queues a zoom command
+   * @param centerIndex Internal index ( mouse position in elevation chart )
+   * @param factor zoom factor
+   */
   queue(centerIndex: number, factor: number) {
     if (this.accumulatedZoomFactor === null) {
       this.accumulatedZoomFactor = factor
@@ -88,7 +126,7 @@ class ZoomEventQueue {
 }
 
 /**
- * Will stretch an interval of consecutive integers with stretch factor > 0 and mid point m. Stretching could not go beyond base interval 0 .. I_max
+ * Will stretch an interval of consecutive integers with stretch factor > 0 and mid point m. Stretching could not go beyond base interval min .. max
  * 
  * Algorithm tries to keep mid point exactly by adjusting length of new array to nearest odd integer.
  * This means that stretch factor is not always achieved exactly.
@@ -97,24 +135,20 @@ class ZoomEventQueue {
  * @param i_end Max boundary of start interval (included)
  * @param mid Mid value for stretching
  * @param factor Stretch factor
- * @param [min=0] Minimum value of start
- * @param [max=Infinity] Maximum value of end
+ * @param [I_min=0] Minimum value of start
+ * @param [I_max=Infinity] Maximum value of end
  * @returns Object { start: v1, end: v2 } Boundaries of stretched interval
  */
-function stretchInterval(i_start: number, i_end: number, mid: number, factor: number, min = 0, max = Infinity) {
-  // Ursprüngliche Länge
-  const originalLength = i_end - i_start + 1;
+function stretchInterval(i_start: number, i_end: number, mid: number, factor: number, I_min = 0, I_max = Infinity) {
 
-  // Neue gestreckte Länge
-  const newLength = roundToNextOdd(originalLength * factor);
+  const new_start1 = mid - factor * (mid - i_start)
+  const new_end1 = mid + factor * (i_end - mid)
 
-  // Berechne neue Grenzen um den Mittelpunkt mid
-  let new_start = mid + (1 - newLength) / 2;
-  let new_end = mid + (newLength - 1) / 2;
+  const new_start2 = round(new_start1)
+  const new_end2 = round(new_end1)
 
-  // Begrenzung auf das Intervall I = [0, I_max]
-  new_start = Math.max(min, new_start);
-  new_end = Math.min(max, new_end);
+  const new_start = max(new_start2, I_min)
+  const new_end = min(new_end2, I_max)
 
   return { start: new_start, end: new_end };
 }
@@ -128,7 +162,7 @@ function stretchInterval(i_start: number, i_end: number, mid: number, factor: nu
  * @returns next odd integer number
  */
 function roundToNextOdd(x: number) {
-  const r = Math.round((x - 1) / 2) * 2 + 1
+  const r = round((x - 1) / 2) * 2 + 1
   return r
 }
 

@@ -175,6 +175,8 @@ onMounted(() => {
 
     canvas.addEventListener('wheel', (event) => {
       // Get mouse position relative to canvas
+      event.stopPropagation()
+      event.preventDefault()
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
 

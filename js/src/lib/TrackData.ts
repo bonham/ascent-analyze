@@ -61,7 +61,7 @@ class TrackSegmentIndexed {
   pointDistance: number
   startIndex: number
 
-  pointsByIndex: { [key: number]: TrackPoint } = {}
+  pointsByIndex: { [key: number]: TrackPointWithDistance } = {}
   arrayOfIndexedPoints: { index: number, point: TrackPointWithDistance }[] = []
 
   /**

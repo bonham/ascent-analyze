@@ -81,7 +81,7 @@ onMounted(async () => {
   }
   const zoomManager = new ZoomManager(initialSegmentIndexed)
   zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-    const newSegment = zoomManager.applyFactor(centerIndex, factor)
+    const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
     updateSubComponents(newSegment)
   })
 
@@ -121,7 +121,7 @@ function handleZoomEvent(xValue: number, deltaY: number) {
     // zoom in
     incrementalZoomFactor = INCREMENT_FACTOR * Math.abs(deltaY) / DELTA_Y_NORM
   }
-  console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor)
+  console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 
