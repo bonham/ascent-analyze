@@ -18,6 +18,7 @@ const lineStringFeature = ref<Feature<LineString> | null>(null)
 const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
+const zoomMapOnUpdate = ref(false)
 
 // Interpolated full segment after initial load
 let initialSegmentIndexed: TrackSegmentIndexed
@@ -82,9 +83,12 @@ onMounted(async () => {
   const zoomManager = new ZoomManager(initialSegmentIndexed)
   zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
     const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
+    zoomMapOnUpdate.value = false
     updateSubComponents(newSegment)
   })
 
+  // initial update with zoom
+  zoomMapOnUpdate.value = true
   updateSubComponents(initialSegmentIndexed)
 
 })
@@ -94,10 +98,11 @@ onMounted(async () => {
  * @param newTrack New indexed track to use for updating 
  */
 function updateSubComponents(newTrack: TrackSegmentIndexed) {
-  elevationChartSegment.value = newTrack
-
   const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
   lineStringFeature.value = newGeoJson
+
+  elevationChartSegment.value = newTrack
+
 }
 
 /**
@@ -110,7 +115,7 @@ function handleZoomEvent(xValue: number, deltaY: number) {
 
   if (zoomQueue === undefined) return
 
-  const INCREMENT_FACTOR = 0.9
+  const INCREMENT_FACTOR = 0.7
   const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
   let incrementalZoomFactor: number
 
@@ -136,7 +141,7 @@ function handleZoomEvent(xValue: number, deltaY: number) {
     </p>
     <div class="row my-3">
       <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
-        @hover-index="mapViewMouseIndexValue = $event" />
+        :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
     </div>
     <div class="row my-3">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"

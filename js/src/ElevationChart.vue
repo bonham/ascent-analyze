@@ -13,9 +13,7 @@ import type { ElevationPoint } from './lib/elevationChartHelpers';
 import { createAscentFillPlugin } from './lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
-
-
-
+import type { UpdateMode } from 'chart.js'
 
 // 👇 Define props using defineProps
 const props = defineProps<{
@@ -58,7 +56,7 @@ function updateChart(chartInstance: Chart, segmentI: TrackSegmentIndexed) {
   ) {
     chartInstance.options.plugins.ascentFillPlugin = { data: areaProperties }
   }
-  chartInstance.update();
+  chartInstance.update('scroll_update' as UpdateMode);
 }
 
 // 🧭 Log whenever trackCoords changes
@@ -141,6 +139,13 @@ onMounted(() => {
           radius: 2,
           pointStyle: 'circle'
         },
+      },
+      transitions: {
+        scroll_update: {
+          animation: {
+            duration: 0
+          }
+        }
       }
     },
     plugins: [verticalLinePlugin, ascentFillPlugin]

@@ -18,7 +18,7 @@ import Fill from 'ol/style/Fill';
 import { fromLonLat, transform } from 'ol/proj';
 import Feature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
-import type { LineString } from 'ol/geom';
+import type { Geometry, LineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
 import { TrackPointIndex } from './lib/TrackPointIndex';
 import { MarkerOnTrack } from './lib/mapViewHelpers'
@@ -32,6 +32,7 @@ const mapContainer = ref<HTMLDivElement | null>(null);
 const props = defineProps<{
   highlightXpos: number | null; // Index of the selected point to highlight
   lineStringF: GeoJsonFeature<GeoJsonLineString> | null;
+  zoomOnUpdate: boolean
 }>();
 
 const emit = defineEmits<{
@@ -119,16 +120,8 @@ onMounted(async () => {
     })
     tpIndex = new TrackPointIndex(points)
 
-    if (map) {
-      const extent = trackVectorSource.getExtent();
-      if (!isEmpty(extent)) {
-        map.getView().fit(extent, {
-          padding: [50, 50, 50, 50],
-          maxZoom: 17,
-          duration: 1000
-        });
-        map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
-      }
+    if (map && props.zoomOnUpdate) {
+      zoomToTrack(map, trackVectorSource)
     }
 
   })
@@ -180,7 +173,17 @@ onMounted(async () => {
   });
 });
 
-
+function zoomToTrack(map: Map, source: VectorSource<Feature<Geometry>>,) {
+  const extent = source.getExtent();
+  if (!isEmpty(extent)) {
+    map.getView().fit(extent, {
+      padding: [50, 50, 50, 50],
+      maxZoom: 17,
+      duration: 1000
+    });
+    map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
+  }
+}
 
 
 

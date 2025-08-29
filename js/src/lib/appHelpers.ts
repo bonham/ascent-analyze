@@ -32,18 +32,19 @@ class ZoomManager {
     // this.currentZoomFactor = Math.min(newFactor, 1)
 
     // zoom logic
-    const cs = this.currentSegment
-    const fs = this.fullSegment
+    const curSeg = this.currentSegment
+    const fullSeg = this.fullSegment
 
-    const I_min = fs.minIndex()
-    const I_max = fs.maxIndex()
-    const current_start = cs.minIndex()
-    const current_end = cs.maxIndex()
+    const I_min = fullSeg.minIndex()
+    const I_max = fullSeg.maxIndex()
+    const current_start = curSeg.minIndex()
+    const current_end = curSeg.maxIndex()
 
+    console.log("\n\n--- applyFactor ----")
     console.log(`Current virt boundaries: ${current_start}, ${current_end}`)
-    const cp = cs.get(virtualCenterIndex)
-    console.log(`cent vidx:${virtualCenterIndex}, iidx:${cs.toInternalIndex(virtualCenterIndex)}, ele:${cp.elevation}, dist:${cp.distanceFromStart}`)
-    console.log("Current Segment", cs)
+    const cp = curSeg.get(virtualCenterIndex)
+    console.log(`cent vidx:${virtualCenterIndex}, iidx:${curSeg.toInternalIndex(virtualCenterIndex)}, ele:${cp.elevation}, dist:${cp.distanceFromStart}`)
+    // console.log("Current Segment", curSeg)
     const currentPercent = (virtualCenterIndex - current_start) / (current_end - current_start)
     console.log("Current perc:", currentPercent)
 
@@ -51,7 +52,7 @@ class ZoomManager {
     const zoomedPercent = (virtualCenterIndex - newStart) / (newEnd - newStart)
     console.log("Zoomed perc:", zoomedPercent)
 
-    const zoomedIndexedSegment = cs.slice(newStart, newEnd + 1)
+    const zoomedIndexedSegment = fullSeg.slice(newStart, newEnd + 1) // from full segment
 
     console.log(`New boundaries: ${newStart}, ${newEnd}, ${zoomedIndexedSegment.minIndex()}, ${zoomedIndexedSegment.maxIndex()},`)
 
@@ -62,7 +63,7 @@ class ZoomManager {
     })
 
     this.currentSegment = zoomedIndexedSegment
-    console.log("Zoomed Segment:", zoomedIndexedSegment)
+    // console.log("Zoomed Segment:", zoomedIndexedSegment)
     return zoomedIndexedSegment
   }
 
