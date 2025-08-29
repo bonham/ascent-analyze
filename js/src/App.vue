@@ -115,18 +115,18 @@ function handleZoomEvent(xValue: number, deltaY: number) {
 
   if (zoomQueue === undefined) return
 
-  const INCREMENT_FACTOR = 0.7
+  const ZOOMIN_INCREMENT_FACTOR = 0.7
   const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
   let incrementalZoomFactor: number
 
   if (deltaY > 0) {
     // zoom out
-    incrementalZoomFactor = Math.abs(deltaY) / (INCREMENT_FACTOR * DELTA_Y_NORM)
+    incrementalZoomFactor = Math.abs(deltaY) / (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM)
   } else {
     // zoom in
-    incrementalZoomFactor = INCREMENT_FACTOR * Math.abs(deltaY) / DELTA_Y_NORM
+    incrementalZoomFactor = (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM) / Math.abs(deltaY)
   }
-  console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
+  //console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 

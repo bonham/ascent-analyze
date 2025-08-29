@@ -52,9 +52,9 @@ function updateChart(chartInstance: Chart, segmentI: TrackSegmentIndexed) {
 
   if (
     chartInstance.options.plugins &&
-    chartInstance.options.plugins.ascentFillPlugin !== undefined
+    chartInstance.options.plugins!.ascentFillPlugin !== undefined
   ) {
-    chartInstance.options.plugins.ascentFillPlugin = { data: areaProperties }
+    chartInstance.options.plugins!.ascentFillPlugin = { data: areaProperties }
   }
   chartInstance.update('scroll_update' as UpdateMode);
 }
