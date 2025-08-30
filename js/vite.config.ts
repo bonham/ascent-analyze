@@ -30,4 +30,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          ol: ['ol'],
+          vue: ['vue'],
+          'chart.js': ['chart.js']
+        }
+      }
+    }
+  }
 })
