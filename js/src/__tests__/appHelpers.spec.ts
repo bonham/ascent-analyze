@@ -28,26 +28,49 @@ describe("AppHelpers", () => {
     expect(end).toEqual(9);
   })
 
-  test("stretch_interval 3", () => {
+  test("stretch_interval hits default min limit of 20", () => {
     const k = 0;
     const l = 100;
     const m = 10;
     const f = 0.133;
 
     const { start, end } = stretchInterval(k, l, m, f);
-    expect(start).toEqual(9);
-    expect(end).toEqual(22);
+    expect(end - start).toEqual(20);
   })
 
-  test("stretch_interval 4", () => {
+  test("stretch_interval overcome min limit", () => {
+    const k = 0;
+    const l = 100;
+    const m = 10;
+    const f = 0.133;
+
+    const { start, end } = stretchInterval(k, l, m, f, undefined, undefined, 1);
+    expect(end - start).toEqual(13);
+    expect(start).toEqual(9)
+    expect(end).toEqual(22)
+  })
+
+  test("zoom in when interval smaller than min interval - do nothing", () => {
     const k = 2;
     const l = 10;
     const m = 4;
     const f = 0.5;
 
     const { start, end } = stretchInterval(k, l, m, f);
-    expect(start).toEqual(3);
-    expect(end).toEqual(7);
+    expect(start).toEqual(2);
+    expect(end).toEqual(10);
+  })
+
+  test("zoom in with m not in center and start not zero", () => {
+    const k = 100;
+    const l = 500;
+    const m = 150;
+    const f = 0.8;
+
+    const { start, end } = stretchInterval(k, l, m, f);
+    expect(start).toEqual(110);
+    expect(end).toEqual(430);
+    expect(end - start).toEqual(320)
   })
 
 })
@@ -93,11 +116,11 @@ describe("Zoom Manager", () => {
   })
 
 
-  test("One", () => {
+  test("Factor 1 yields same", () => {
     const zm = new ZoomManager(tsi)
     const zoomedSegment = zm.applyFactor(3, 1)
-    expect(zoomedSegment.length()).toEqual(9)
-    expect(zoomedSegment.getSegment()).toEqual(tsi.sliceSegment(0, 9))
+    expect(zoomedSegment.length()).toEqual(10)
+    expect(zoomedSegment.getSegment()).toEqual(track1)
   })
 
   test("Other center", () => {
@@ -108,16 +131,4 @@ describe("Zoom Manager", () => {
 
   })
 
-  test("Half", () => {
-    const zm = new ZoomManager(tsi)
-    const zoomedSegment = zm.applyFactor(3, 0.5) // index 3 is fourth element
-
-    expect(zoomedSegment.getSegment()).toEqual([
-      { lat: 2, lon: 2.2, elevation: 20, distanceFromStart: 100 },
-      { lat: 3, lon: 3.2, elevation: 30, distanceFromStart: 200 },
-      { lat: 4, lon: 4.2, elevation: 40, distanceFromStart: 300 },
-      { lat: 5, lon: 5.2, elevation: 50, distanceFromStart: 400 },
-      { lat: 6, lon: 6.2, elevation: 60, distanceFromStart: 500 },
-    ])
-  })
 })

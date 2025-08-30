@@ -38,7 +38,7 @@ class ZoomManager {
     const current_start = curSeg.minIndex()
     const current_end = curSeg.maxIndex()
 
-    const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, virtualCenterIndex, factor, I_min, I_max)
+    const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, virtualCenterIndex, factor, I_min, I_max, this.MIN_INTERVAL_LENGTH)
 
     const zoomedIndexedSegment = fullSeg.slice(newStart, newEnd + 1) // from full segment
     this.currentSegment = zoomedIndexedSegment
@@ -133,11 +133,25 @@ class ZoomEventQueue {
  */
 function stretchInterval(i_start: number, i_end: number, mid: number, factor: number, I_min = 0, I_max = Infinity, minLength = 20) {
 
-  // check to ensure min interval
-  const startLength = i_end - i_start
-  const minFactorLimit = minLength / startLength
+  // if factor === 1 do nothing
+  if (factor === 1) {
+    return { start: i_start, end: i_end }
+  }
 
-  const actualFactor = Math.max(minFactorLimit, factor)
+  const startLength = i_end - i_start
+
+  // if current length smaller than minLength and we have zoom in , do nothing
+  if (startLength <= minLength && factor < 1) {
+    return { start: i_start, end: i_end }
+  }
+
+  let actualFactor = factor
+
+  // For zoom in , check to not go smaller than minLength
+  if (factor < 1) {
+    const minFactorLimit = minLength / startLength
+    actualFactor = Math.max(minFactorLimit, factor)
+  }
 
   const new_start1 = mid - actualFactor * (mid - i_start)
   const new_end1 = mid + actualFactor * (i_end - mid)

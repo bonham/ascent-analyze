@@ -8,8 +8,6 @@
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import { TrackSegmentIndexed } from './lib/TrackData';
-import { createAreaProperties } from './lib/elevationChartHelpers'
-import type { ElevationPoint } from './lib/elevationChartHelpers';
 import { createAscentFillPlugin } from './lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
@@ -44,16 +42,6 @@ function updateChart(chartInstance: Chart, segmentI: TrackSegmentIndexed) {
   chartInstance.data = {
     datasets: [{ data: myDataset }],
     labels: myLabels
-  }
-
-  const eps: ElevationPoint[] = segment.map((_, i) => ({ distance: i * props.pointDistance, elevation: _.elevation }))
-  const areaProperties = createAreaProperties(eps)
-
-  const o = chartInstance.options
-  if (
-    o !== undefined && typeof o === 'object' && o !== null && 'ascentFillPlugin' in o
-  ) {
-    o.ascentFillPlugin = { data: areaProperties }
   }
 
   type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
