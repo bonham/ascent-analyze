@@ -53,6 +53,39 @@ function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
   }
 }
 
+function analyzeAscent(seg: TrackSegment) {
+  // analyze subsequent points
+
+  // hill start : 5% über 500 m: entspricht 25 m über 500m - 5m pro 100m 
+
+  const window1 = 5
+
+  let hillStarted = false
+  let hillStartIdx: null | number = null
+  let hillStopIdx: null | number = null
+
+  for (let idx = window1 - 1; idx < seg.length; idx++) {
+
+    const windowStartIdx = idx - window1 + 1
+
+    const lastPoint = seg[windowStartIdx]
+    const thisPoint = seg[idx]
+    const elevationDelta = thisPoint.elevation - lastPoint.elevation
+
+    if (!hillStarted) {
+      if (elevationDelta >= 25) {
+        hillStarted = true
+        hillStartIdx = windowStartIdx
+      }
+    } else if (elevationDelta <= 0) {
+      hillStarted = false
+      hillStopIdx = windowStartIdx
+      console.log("start stop: ", hillStartIdx, hillStopIdx)
+    }
+  }
+
+}
+
 onMounted(async () => {
 
   // loading the data should be done after mounted and all child components are ready ( chart, map )
@@ -80,29 +113,38 @@ onMounted(async () => {
     console.error('Failed to create equidistant segment:', e);
     return
   }
+
+  analyzeAscent(initialSegmentIndexed.getSegment())
+
   const zoomManager = new ZoomManager(initialSegmentIndexed)
   zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
     const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
     zoomMapOnUpdate.value = false
-    updateSubComponents(newSegment)
+    updateElevationChart(newSegment)
   })
 
   // initial update with zoom
   zoomMapOnUpdate.value = true
-  updateSubComponents(initialSegmentIndexed)
+  updateMap(initialSegmentIndexed)
+  updateElevationChart(initialSegmentIndexed)
 
 })
 
 /**
- * Updates both - Map and elevation chart
+ * Updates Map 
  * @param newTrack New indexed track to use for updating 
  */
-function updateSubComponents(newTrack: TrackSegmentIndexed) {
+function updateMap(newTrack: TrackSegmentIndexed) {
   const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
   lineStringFeature.value = newGeoJson
+}
 
+/**
+ * Updates Elevation Chart
+ * @param newTrack New indexed track to use for updating 
+ */
+function updateElevationChart(newTrack: TrackSegmentIndexed) {
   elevationChartSegment.value = newTrack
-
 }
 
 /**
@@ -136,14 +178,15 @@ function handleZoomEvent(xValue: number, deltaY: number) {
 <template>
   <div class="container py-4 px-3 mx-auto">
     <h1>You did it!</h1>
-    <p>
+    <div>
       Elevation analyzer
-    </p>
-    <div class="row my-3">
+      <button type="button" class="btn btn-primary">Analyze</button>
+    </div>
+    <div class="row my-3 py-3 border">
       <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
         :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
     </div>
-    <div class="row my-3">
+    <div class="row my-3 py-3 border">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
         @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>

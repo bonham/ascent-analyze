@@ -1,0 +1,39 @@
+# types
+
+* TrackPoint - lat, lon , elevation
+* TrackPointWithDistance - lat, lon, elevation, distanceFromStart
+* TrackSegment - TrackPoint[]
+* TrackSegmentWithDistance - TrackPointWithDistance[]
+
+# classes
+
+* TrackData
+  - Multiple segments
+  - addSegment, addPointToSegment, getSegments, getAllPoints etc.
+
+* TrackSegmentIndexed
+  * Fixed distance segment.
+  * Has virtual and internal index - useful to have index starting from nonzero
+  * slicing by internal or virtual interval
+  * slice to TrackSegmentIndexed or TrackSegment
+  * zoom function
+
+* TrackPointIndex
+  - geospatial index for a list of points
+  - it is possible to obtain nearest point of list for a given refpoint
+
+* ElevationChart
+  - uses TrackSegmentIndexed as prop
+ 
+* MapView
+  - uses LineStringFeature as prop
+  - uses TrackPointIndex
+  - does not know about segments 
+
+* Track2GeoJson
+  - reformats Segment to LineStringFeature
+
+* App.vue
+  - Track2GeoJson
+
+
