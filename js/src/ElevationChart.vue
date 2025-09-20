@@ -7,14 +7,15 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
-import { TrackSegmentIndexed } from './lib/TrackData';
-import { createAscentFillPlugin } from './lib/AscentFillPlugin';
+import { TrackSegmentIndexed, type TrackSegmentWithDistance } from './lib/TrackData';
+//import { createAscentFillPlugin } from './lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
 import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
 
 // 👇 Define props using defineProps
 const props = defineProps<{
   trackCoords: TrackSegmentIndexed | null; // TrackSegment with equidistant points
+  overlayIntervals: number[][]; // List of x axis index intervals to draw in different color ( virtual index )
   pointDistance: number;
   cursorIndex: number | null; // Vertical line cursor index value
 }>();
@@ -31,21 +32,80 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 let chartInstance: Chart<'line'> | null = null;
 
 
+function genData(segment: TrackSegmentWithDistance): number[] {
+  const dataset = segment.map((_) => _.elevation)
+  return dataset
+}
 
-function updateChart(chartInstance: Chart, segmentI: TrackSegmentIndexed) {
+function genOverlayData(baseData: number[], intervals: number[][]) {
+  const sourceLength = baseData.length
+  const resultArray = Array(sourceLength).fill(NaN)
+
+  let maxEnd = 0
+
+  for (const interval of intervals) {
+    const [start, end] = interval
+    console.log("Start, end: ", start, end)
+    if (start >= sourceLength) {
+      throw new Error(`Interval start value ${start} is out of bound of sourceSegment with length ${length}`)
+    }
+    if (end >= sourceLength) {
+      throw new Error(`Interval end value ${end} is out of bound of sourceSegment with length ${length}`)
+    }
+    if (start >= end) {
+      throw new Error(`Interval start value ${start} not smaller than end value ${end}`)
+    }
+    for (let i = start; i <= end; i++) {
+      resultArray[i] = baseData[i]
+    }
+    maxEnd = Math.max(maxEnd, end)
+  }
+  return resultArray.slice(0, maxEnd + 1)
+}
+
+function updateChart(chartInstance: Chart<'line'>, segmentI: TrackSegmentIndexed) {
 
   const indexList = segmentI.indexList()
   const myLabels = indexList.map(e => (e * segmentI.pointDistance / 1000).toFixed(1))
   const segment = segmentI.getSegment()
-  const myDataset = segment.map((_) => _.elevation)
+  const primaryLineData = genData(segment)
 
-  chartInstance.data = {
-    datasets: [{ data: myDataset }],
-    labels: myLabels
-  }
+  // translate intervals from virtual to internal index
+  const overLayIntervalsInternal = intervalsToInternal(segmentI, props.overlayIntervals)
+
+  const overlayLineData = genOverlayData(primaryLineData, overLayIntervalsInternal)
+
+  chartInstance.data.labels = myLabels
+  chartInstance.data.datasets[0].data = primaryLineData
+  chartInstance.data.datasets[1].data = overlayLineData
+  //  chartInstance.data.datasets[1].data = [NaN, NaN, NaN, NaN, NaN, 100, 100, 100, 100, NaN, NaN, NaN, NaN, NaN, 120, 120, 120, 120, 120, 120, NaN, NaN, NaN]
+  console.log("overlay data:", chartInstance.data.datasets[1].data)
 
   type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
   chartInstance.update('scroll_update' as MyUpdateArgType);
+}
+
+function intervalsToInternal(si: TrackSegmentIndexed, sourceIntervals: number[][]) {
+  const len = si.length()
+  console.log("Length", len)
+  const outI: number[][] = []
+  for (const intv of sourceIntervals) {
+    const [virtStart, virtEnd] = intv
+    const intStart = si.toInternalIndex(virtStart)
+    const intEnd = si.toInternalIndex(virtEnd)
+
+    console.log(`(${virtStart}, ${virtEnd}) -> (${intStart}, ${intEnd})`)
+
+    if (virtStart >= virtEnd) { throw new Error(`Virtual interval start ${virtStart} is not smaller than virtual end ${virtEnd}`) }
+
+    // interval needs to be at least partially within the current data
+    if ((intEnd > 0) && (intStart < len - 1)) {
+      const startCapped = Math.max(0, intStart)
+      const endCapped = Math.min(len - 1, intEnd)
+      outI.push([startCapped, endCapped])
+    }
+  }
+  return outI
 }
 
 // 🧭 Log whenever trackCoords changes
@@ -70,7 +130,7 @@ watch(
 // Plugin to draw vertical line at mouseX
 const verticalLinePlugin = createVerticalLinePlugin()
 // Plugin to fill area below chart
-const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
+//const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
 
 // 🎨 Initialize chart once on mount
 onMounted(() => {
@@ -103,11 +163,24 @@ onMounted(() => {
       labels: [],
       datasets: [
         {
+          //borderColor: '#4abfbf',
+          borderColor: '#37a3eb',
           label: 'Elevation (m)',
           data: [],
-          borderColor: 'blue',
-          fill: false
+          fill: false,
+          order: 1,
+          pointStyle: false
+          //          hidden: true
+        },
+        {
+          borderColor: 'red',
+          data: [],
+          fill: false,
+          spanGaps: false,
+          order: 0,
+          pointStyle: false
         }
+
       ]
     },
     options: {
@@ -136,7 +209,8 @@ onMounted(() => {
         }
       }
     },
-    plugins: [verticalLinePlugin, ascentFillPlugin]
+    // plugins: [verticalLinePlugin, ascentFillPlugin]
+    plugins: [verticalLinePlugin]
   });
 
 

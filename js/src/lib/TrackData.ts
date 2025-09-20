@@ -117,10 +117,12 @@ class TrackSegmentIndexed {
     return this.arrayOfIndexedPoints.length
   }
 
+  /** Min virtual index */
   minIndex() {
     return this.arrayOfIndexedPoints[0].index
   }
 
+  /** Max virtual index */
   maxIndex() {
     const length = this.arrayOfIndexedPoints.length
     return this.arrayOfIndexedPoints[length - 1].index

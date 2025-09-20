@@ -19,6 +19,7 @@ const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
+const slopeIntervals = ref<[number, number][]>([])
 
 // Interpolated full segment after initial load
 let initialSegmentIndexed: TrackSegmentIndexed
@@ -64,6 +65,8 @@ function analyzeAscent(seg: TrackSegment) {
   let hillStartIdx: null | number = null
   let hillStopIdx: null | number = null
 
+  const intervals: [number, number][] = []
+
   for (let idx = window1 - 1; idx < seg.length; idx++) {
 
     const windowStartIdx = idx - window1 + 1
@@ -81,9 +84,11 @@ function analyzeAscent(seg: TrackSegment) {
       hillStarted = false
       hillStopIdx = windowStartIdx
       console.log("start stop: ", hillStartIdx, hillStopIdx)
+      if (hillStartIdx === null) { throw new Error("Hill start is null") }
+      intervals.push([hillStartIdx, hillStopIdx])
     }
   }
-
+  return intervals
 }
 
 onMounted(async () => {
@@ -114,19 +119,19 @@ onMounted(async () => {
     return
   }
 
-  analyzeAscent(initialSegmentIndexed.getSegment())
-
   const zoomManager = new ZoomManager(initialSegmentIndexed)
   zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
     const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
     zoomMapOnUpdate.value = false
-    updateElevationChart(newSegment)
+    updateElevationChart(newSegment, overlayIntervals)
   })
+
+  const overlayIntervals = analyzeAscent(initialSegmentIndexed.getSegment())
 
   // initial update with zoom
   zoomMapOnUpdate.value = true
   updateMap(initialSegmentIndexed)
-  updateElevationChart(initialSegmentIndexed)
+  updateElevationChart(initialSegmentIndexed, overlayIntervals)
 
 })
 
@@ -143,8 +148,9 @@ function updateMap(newTrack: TrackSegmentIndexed) {
  * Updates Elevation Chart
  * @param newTrack New indexed track to use for updating 
  */
-function updateElevationChart(newTrack: TrackSegmentIndexed) {
+function updateElevationChart(newTrack: TrackSegmentIndexed, overlayIntervals: [number, number][]) {
   elevationChartSegment.value = newTrack
+  slopeIntervals.value = overlayIntervals
 }
 
 /**
@@ -188,7 +194,8 @@ function handleZoomEvent(xValue: number, deltaY: number) {
     </div>
     <div class="row my-3 py-3 border">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
-        @highlight-xvalue="elevationChartMouseXValue = $event" :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
+        :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
+        :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
   </div>
 </template>
