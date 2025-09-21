@@ -59,7 +59,9 @@ function analyzeAscent(seg: TrackSegment) {
 
   // hill start : 5% über 500 m: entspricht 25 m über 500m - 5m pro 100m 
 
-  const window1 = 5
+  const WINDOWSIZE = 5
+  const START_TRIGGER_DELTA = 25
+  const STOP_TRIGGER_DELTA = 10
 
   let hillStarted = false
   let hillStartIdx: null | number = null
@@ -67,22 +69,43 @@ function analyzeAscent(seg: TrackSegment) {
 
   const intervals: [number, number][] = []
 
-  for (let idx = window1 - 1; idx < seg.length; idx++) {
+  for (let idx = WINDOWSIZE - 1; idx < seg.length; idx++) {
 
-    const windowStartIdx = idx - window1 + 1
+    const windowStartIdx = idx - WINDOWSIZE + 1
 
     const lastPoint = seg[windowStartIdx]
     const thisPoint = seg[idx]
     const elevationDelta = thisPoint.elevation - lastPoint.elevation
 
     if (!hillStarted) {
-      if (elevationDelta >= 25) {
+      if (elevationDelta >= START_TRIGGER_DELTA) {
         hillStarted = true
         hillStartIdx = windowStartIdx
       }
-    } else if (elevationDelta <= 0) {
+      // hill has started , check when it ends, and where
+    } else if (elevationDelta <= STOP_TRIGGER_DELTA) {
+
+      // We need to distinguish if a peak was reached or if the ascent does continue but is getting less steep.
+
+      // find index of point with highest elevation in window
+      const pointsInInterval = seg.slice(windowStartIdx, idx + 1)
+      const indexMaxElevationOfSlice = pointsInInterval.reduce(
+        (indexMax, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation > pointsInInterv[indexMax].elevation ? currentIndex : indexMax,
+        0
+      )
+      // calculate back from slicing
+      const indexMaxElevation = indexMaxElevationOfSlice + windowStartIdx
+      const maxElevationInterval = seg[indexMaxElevation].elevation
+
+      // peak is reached - slope ends at peak
+      if (thisPoint.elevation < maxElevationInterval) {
+        hillStopIdx = indexMaxElevation
+        // otherwise - solpe ends at window start
+      } else {
+        hillStopIdx = windowStartIdx
+      }
+
       hillStarted = false
-      hillStopIdx = windowStartIdx
       console.log("start stop: ", hillStartIdx, hillStopIdx)
       if (hillStartIdx === null) { throw new Error("Hill start is null") }
       intervals.push([hillStartIdx, hillStopIdx])

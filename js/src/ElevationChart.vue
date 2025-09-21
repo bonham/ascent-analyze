@@ -45,7 +45,6 @@ function genOverlayData(baseData: number[], intervals: number[][]) {
 
   for (const interval of intervals) {
     const [start, end] = interval
-    console.log("Start, end: ", start, end)
     if (start >= sourceLength) {
       throw new Error(`Interval start value ${start} is out of bound of sourceSegment with length ${length}`)
     }
@@ -78,8 +77,6 @@ function updateChart(chartInstance: Chart<'line'>, segmentI: TrackSegmentIndexed
   chartInstance.data.labels = myLabels
   chartInstance.data.datasets[0].data = primaryLineData
   chartInstance.data.datasets[1].data = overlayLineData
-  //  chartInstance.data.datasets[1].data = [NaN, NaN, NaN, NaN, NaN, 100, 100, 100, 100, NaN, NaN, NaN, NaN, NaN, 120, 120, 120, 120, 120, 120, NaN, NaN, NaN]
-  console.log("overlay data:", chartInstance.data.datasets[1].data)
 
   type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
   chartInstance.update('scroll_update' as MyUpdateArgType);
@@ -87,14 +84,14 @@ function updateChart(chartInstance: Chart<'line'>, segmentI: TrackSegmentIndexed
 
 function intervalsToInternal(si: TrackSegmentIndexed, sourceIntervals: number[][]) {
   const len = si.length()
-  console.log("Length", len)
+  //  console.log("Length", len)
   const outI: number[][] = []
   for (const intv of sourceIntervals) {
     const [virtStart, virtEnd] = intv
     const intStart = si.toInternalIndex(virtStart)
     const intEnd = si.toInternalIndex(virtEnd)
 
-    console.log(`(${virtStart}, ${virtEnd}) -> (${intStart}, ${intEnd})`)
+    //    console.log(`(${virtStart}, ${virtEnd}) -> (${intStart}, ${intEnd})`)
 
     if (virtStart >= virtEnd) { throw new Error(`Virtual interval start ${virtStart} is not smaller than virtual end ${virtEnd}`) }
 
