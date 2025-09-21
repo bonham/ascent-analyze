@@ -12,7 +12,7 @@ import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
-
+import { Gpx2Track } from './lib/Gpx2Track';
 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 //const ZOOMWINDOW = 31 // in index numbers
@@ -25,7 +25,6 @@ const zoomMapOnUpdate = ref(false)
 const slopeIntervals = ref<[number, number][]>([])
 
 // Interpolated full segment after initial load
-let initialSegmentIndexed: TrackSegmentIndexed
 let zoomQueue: ZoomEventQueue
 
 onMounted(async () => {
@@ -36,39 +35,12 @@ onMounted(async () => {
   let geojson: FeatureCollection<LineString>;
   try {
     geojson = await loadGeoJson()
+    const { segmentIndexed: initialSegmentIndexed, overlayIntervals } = extractAfterLoad(geojson)
+    refreshPage(initialSegmentIndexed, overlayIntervals)
   } catch (e) {
     console.error('Failed to load track data:', e);
     return
   }
-
-  // Convert from geojson to list of track objects
-  const tracks = GeoJsonLoader.loadFromGeoJson(geojson);
-
-  // Only first segment is taken into account
-  const segment = extractFirstSegmentFirstTrack(tracks)
-
-  try {
-    // interpolate
-    const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
-    initialSegmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
-  } catch (e) {
-    console.error('Failed to create equidistant segment:', e);
-    return
-  }
-
-  const zoomManager = new ZoomManager(initialSegmentIndexed)
-  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-    const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
-    zoomMapOnUpdate.value = false
-    updateElevationChart(newSegment, overlayIntervals)
-  })
-
-  const overlayIntervals = analyzeAscent(initialSegmentIndexed.getSegment())
-
-  // initial update with zoom
-  zoomMapOnUpdate.value = true
-  updateMap(initialSegmentIndexed)
-  updateElevationChart(initialSegmentIndexed, overlayIntervals)
 
 })
 
@@ -77,6 +49,35 @@ async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
   const response = await fetch('/kl.json');
   const geojson = await response.json();
   return geojson
+}
+
+function extractAfterLoad(featureCollection: FeatureCollection<LineString>) {
+  // Convert from geojson to list of track objects
+  const tracks = GeoJsonLoader.loadFromGeoJson(featureCollection);
+
+  // Only first segment is taken into account
+  const segment = extractFirstSegmentFirstTrack(tracks)
+
+
+  // interpolate
+  const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+  const segmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
+  const overlayIntervals = analyzeAscent(segmentIndexed.getSegment())
+  return { segmentIndexed, overlayIntervals }
+}
+
+function refreshPage(segmentIndexed: TrackSegmentIndexed, overlayIntervals: [number, number][]) {
+  const zoomManager = new ZoomManager(segmentIndexed)
+  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
+    const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
+    zoomMapOnUpdate.value = false
+    updateElevationChart(newSegment, overlayIntervals)
+  })
+
+  // initial update with zoom
+  zoomMapOnUpdate.value = true
+  updateMap(segmentIndexed)
+  updateElevationChart(segmentIndexed, overlayIntervals)
 }
 
 // extract first segment from first track
@@ -100,8 +101,6 @@ function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
     }
   }
 }
-
-
 
 /**
  * Updates Map 
@@ -146,19 +145,78 @@ function handleZoomEvent(xValue: number, deltaY: number) {
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 
-// Queue new files
-function processDragDrop(files: FileList) {
-  // take files from input
-  for (const thisFile of files) {
-    console.log(thisFile)
-    const fr = new FileReader()
-    fr.addEventListener('load', () => {
-      console.log(fr.result)
-    })
-    fr.readAsText(thisFile)
-  }
+async function processUploadFiles(files: FileList) {
+  const featureCollection = await readDroppedFile(files)
+  const { segmentIndexed: initialSegmentIndexed, overlayIntervals } = extractAfterLoad(featureCollection)
+  refreshPage(initialSegmentIndexed, overlayIntervals)
 }
 
+function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>> {
+
+  const prom: Promise<FeatureCollection<LineString>> = new Promise((resolve, reject) => {
+
+    if (files.length < 1) {
+      reject(new Error("Filelist is empty"))
+    }
+
+    // take only first file from input
+    const thisFile = files[0]
+    if (thisFile === null) {
+      reject(new Error("File is null"))
+    } else {
+
+      const fr = new FileReader()
+      fr.addEventListener('load', () => {
+        if (fr.result !== null && typeof fr.result === 'string') {
+          const featureCollection = gpx2GeoJson(fr.result)
+          resolve(featureCollection)
+        }
+      })
+      fr.readAsText(thisFile) // async
+    }
+
+  })
+
+  return prom
+
+}
+
+function gpx2GeoJson(input: string): FeatureCollection<LineString> {
+  const g2t = new Gpx2Track(input)
+  console.log("Num Traks:", g2t.numTracks())
+  const fl = g2t.getTrackFeatures()
+  console.log("FL:", fl[0])
+  // console.log("FL:", JSON.stringify(fl, undefined, 2))
+
+  const firstFeature = fl[0]
+
+  function isLineStringFeature(obj: unknown): obj is Feature<LineString> {
+    return (
+      obj !== null &&
+      typeof obj === 'object' &&
+      obj &&
+      'type' in obj &&
+      obj.type === 'Feature' &&
+      'geometry' in obj &&
+      typeof obj.geometry === 'object' &&
+      obj.geometry !== null &&
+      'type' in obj.geometry &&
+      obj.geometry.type === 'LineString'
+    );
+  }
+
+  // Example usage:
+  if (!isLineStringFeature(firstFeature)) {
+    throw new Error('Uploaded file does not contain a valid LineString Feature');
+  }
+  const featureCollection: FeatureCollection<LineString> = {
+    type: "FeatureCollection",
+    features: [
+      firstFeature
+    ]
+  }
+  return featureCollection
+}
 
 </script>
 
@@ -169,7 +227,7 @@ function processDragDrop(files: FileList) {
       Elevation analyzer
       <button type="button" class="btn btn-primary">Analyze</button>
     </div>
-    <DropField @files-dropped="processDragDrop">
+    <DropField @files-dropped="processUploadFiles">
       <div class="row my-3 py-3 border">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
           :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
@@ -181,7 +239,7 @@ function processDragDrop(files: FileList) {
         :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
   </div>
-  <DropPanel @files-dropped="processDragDrop" />
+  <DropPanel @files-dropped="processUploadFiles" />
 </template>
 
 <style scoped></style>

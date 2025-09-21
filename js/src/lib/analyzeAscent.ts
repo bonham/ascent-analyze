@@ -1,7 +1,7 @@
 import type { TrackSegment } from '@/lib/TrackData'
 
 const START_TRIGGER_DELTA = 25
-const STOP_TRIGGER_DELTA = 10
+const STOP_TRIGGER_DELTA = 5
 
 export function analyzeAscent(seg: TrackSegment, startTrigger = START_TRIGGER_DELTA, stopTrigger = STOP_TRIGGER_DELTA) {
   // analyze subsequent points

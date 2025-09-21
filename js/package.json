@@ -18,15 +18,20 @@
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
+    "@tmcw/togeojson": "^7.1.2",
+    "@types/luxon": "^3.7.1",
+    "@xmldom/xmldom": "^0.9.8",
     "bootstrap": "^5.3.7",
     "chart.js": "^4.5.0",
     "commons-math-interpolation": "^2.2.3",
     "geokdbush": "^2.0.1",
     "kdbush": "^4.0.2",
     "lodash": "^4.17.21",
+    "luxon": "^3.7.2",
     "ol": "^10.6.1",
     "pinia": "^3.0.3",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "xpath": "^0.0.34"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.1",
