@@ -28,37 +28,6 @@ const slopeIntervals = ref<[number, number][]>([])
 let initialSegmentIndexed: TrackSegmentIndexed
 let zoomQueue: ZoomEventQueue
 
-// Load a geojson file
-async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
-  const response = await fetch('/kl.json');
-  const geojson = await response.json();
-  return geojson
-}
-
-// extract first segment from first track
-function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
-  if (tracks.length === 0) {
-    console.log("No tracks found in input")
-    return []
-  } else {
-    if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
-    const segments = tracks[0].getSegments()
-    const numSegments = segments.length
-    if (numSegments === 0) {
-      console.log("No segments found in track.")
-      return []
-    }
-    else {
-      if (numSegments > 1) {
-        console.log(`Found ${numSegments} segments in track. Only first one will be processed`)
-      }
-      return segments[0]
-    }
-  }
-}
-
-
-
 onMounted(async () => {
 
   // loading the data should be done after mounted and all child components are ready ( chart, map )
@@ -102,6 +71,37 @@ onMounted(async () => {
   updateElevationChart(initialSegmentIndexed, overlayIntervals)
 
 })
+
+// Load a geojson file
+async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
+  const response = await fetch('/kl.json');
+  const geojson = await response.json();
+  return geojson
+}
+
+// extract first segment from first track
+function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
+  if (tracks.length === 0) {
+    console.log("No tracks found in input")
+    return []
+  } else {
+    if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
+    const segments = tracks[0].getSegments()
+    const numSegments = segments.length
+    if (numSegments === 0) {
+      console.log("No segments found in track.")
+      return []
+    }
+    else {
+      if (numSegments > 1) {
+        console.log(`Found ${numSegments} segments in track. Only first one will be processed`)
+      }
+      return segments[0]
+    }
+  }
+}
+
+
 
 /**
  * Updates Map 
