@@ -1,12 +1,15 @@
-import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { resolve } from 'path'
+import alias from '@rollup/plugin-alias'
+
+const projectRootDir = resolve(__dirname);
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    alias(),
     vue(),
     vueDevTools(),
   ],
@@ -15,9 +18,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
+      '@': resolve(projectRootDir, 'src')
+    }
   },
+
+
+
   css: {
     preprocessorOptions: {
       scss: {

@@ -7,10 +7,10 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
-import { TrackSegmentIndexed, type TrackSegmentWithDistance } from './lib/TrackData';
-//import { createAscentFillPlugin } from './lib/AscentFillPlugin';
-import { createVerticalLinePlugin } from './lib/VerticalLinePlugin';
-import type { VerticalLinePlugin } from './lib/VerticalLinePlugin';
+import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackData';
+//import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
+import { createVerticalLinePlugin } from '@/lib/VerticalLinePlugin';
+import type { VerticalLinePlugin } from '@/lib/VerticalLinePlugin';
 
 // 👇 Define props using defineProps
 const props = defineProps<{

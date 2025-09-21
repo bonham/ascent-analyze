@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { TrackPointIndex } from '../lib/TrackPointIndex'
+import { TrackPointIndex } from '.@/lib/TrackPointIndex'
 
 describe("TrackPointIndex", () => {
   test("first", () => {

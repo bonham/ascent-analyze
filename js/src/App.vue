@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import MapView from './MapView.vue';
-import ElevationChart from './ElevationChart.vue';
+import MapView from '@/components/MapView.vue';
+import ElevationChart from '@/components/ElevationChart.vue';
 import { ref, onMounted } from 'vue';
-import { GeoJsonLoader } from './lib/GeoJsonLoader';
-import { TrackSegmentIndexed } from './lib/TrackData'
-import type { TrackData, TrackSegment } from './lib/TrackData'
-import { makeEquidistantTrackAkima } from './lib/InterpolateSegment';
+import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
+import { TrackSegmentIndexed } from '@/lib/TrackData'
+import type { TrackData, TrackSegment } from '@/lib/TrackData'
+import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
 import type { FeatureCollection, Feature, LineString } from 'geojson';
-import { Track2GeoJson } from './lib/Track2GeoJson';
-import { ZoomEventQueue, ZoomManager } from './lib/appHelpers';
+import { Track2GeoJson } from '@/lib/Track2GeoJson';
+import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
+import DropField from '@/components/DropField.vue';
+import DropPanel from '@/components/DropPanel.vue';
+import { analyzeAscent } from '@/lib/analyzeAscent'
 
 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
@@ -54,65 +57,7 @@ function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
   }
 }
 
-function analyzeAscent(seg: TrackSegment) {
-  // analyze subsequent points
 
-  // hill start : 5% über 500 m: entspricht 25 m über 500m - 5m pro 100m 
-
-  const WINDOWSIZE = 5
-  const START_TRIGGER_DELTA = 25
-  const STOP_TRIGGER_DELTA = 10
-
-  let hillStarted = false
-  let hillStartIdx: null | number = null
-  let hillStopIdx: null | number = null
-
-  const intervals: [number, number][] = []
-
-  for (let idx = WINDOWSIZE - 1; idx < seg.length; idx++) {
-
-    const windowStartIdx = idx - WINDOWSIZE + 1
-
-    const lastPoint = seg[windowStartIdx]
-    const thisPoint = seg[idx]
-    const elevationDelta = thisPoint.elevation - lastPoint.elevation
-
-    if (!hillStarted) {
-      if (elevationDelta >= START_TRIGGER_DELTA) {
-        hillStarted = true
-        hillStartIdx = windowStartIdx
-      }
-      // hill has started , check when it ends, and where
-    } else if (elevationDelta <= STOP_TRIGGER_DELTA) {
-
-      // We need to distinguish if a peak was reached or if the ascent does continue but is getting less steep.
-
-      // find index of point with highest elevation in window
-      const pointsInInterval = seg.slice(windowStartIdx, idx + 1)
-      const indexMaxElevationOfSlice = pointsInInterval.reduce(
-        (indexMax, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation > pointsInInterv[indexMax].elevation ? currentIndex : indexMax,
-        0
-      )
-      // calculate back from slicing
-      const indexMaxElevation = indexMaxElevationOfSlice + windowStartIdx
-      const maxElevationInterval = seg[indexMaxElevation].elevation
-
-      // peak is reached - slope ends at peak
-      if (thisPoint.elevation < maxElevationInterval) {
-        hillStopIdx = indexMaxElevation
-        // otherwise - solpe ends at window start
-      } else {
-        hillStopIdx = windowStartIdx
-      }
-
-      hillStarted = false
-      console.log("start stop: ", hillStartIdx, hillStopIdx)
-      if (hillStartIdx === null) { throw new Error("Hill start is null") }
-      intervals.push([hillStartIdx, hillStopIdx])
-    }
-  }
-  return intervals
-}
 
 onMounted(async () => {
 
@@ -201,6 +146,19 @@ function handleZoomEvent(xValue: number, deltaY: number) {
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 
+// Queue new files
+function processDragDrop(files: FileList) {
+  // take files from input
+  for (const thisFile of files) {
+    console.log(thisFile)
+    const fr = new FileReader()
+    fr.addEventListener('load', () => {
+      console.log(fr.result)
+    })
+    fr.readAsText(thisFile)
+  }
+}
+
 
 </script>
 
@@ -211,16 +169,19 @@ function handleZoomEvent(xValue: number, deltaY: number) {
       Elevation analyzer
       <button type="button" class="btn btn-primary">Analyze</button>
     </div>
-    <div class="row my-3 py-3 border">
-      <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
-        :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
-    </div>
+    <DropField @files-dropped="processDragDrop">
+      <div class="row my-3 py-3 border">
+        <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
+          :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
+      </div>
+    </DropField>
     <div class="row my-3 py-3 border">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
         :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
   </div>
+  <DropPanel @files-dropped="processDragDrop" />
 </template>
 
 <style scoped></style>

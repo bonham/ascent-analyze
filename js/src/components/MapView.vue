@@ -20,8 +20,8 @@ import Feature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
 import type { Geometry, LineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
-import { TrackPointIndex } from './lib/TrackPointIndex';
-import { MarkerOnTrack } from './lib/mapViewHelpers'
+import { TrackPointIndex } from '@/lib/TrackPointIndex';
+import { MarkerOnTrack } from '@/lib/mapViewHelpers'
 
 
 let map: Map;
