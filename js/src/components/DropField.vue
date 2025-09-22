@@ -5,12 +5,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, defineEmits } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 const emit = defineEmits(['files-dropped'])
 
 function onDrop(e: DragEvent) {
   if (e.dataTransfer === null) { throw new Error("e.dataTransfer is null") }
-  emit('files-dropped', [...e.dataTransfer.files])
+  emit('files-dropped', e.dataTransfer.files)
 }
 
 function preventDefaults(e: Event) {

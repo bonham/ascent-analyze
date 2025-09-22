@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import DropField from '@/components/DropField.vue';
-import { defineEmits } from 'vue'
 
 const emit = defineEmits(['files-dropped'])
 
