@@ -14,6 +14,8 @@ import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
 import { Gpx2Track } from './lib/Gpx2Track';
 
+const START_TRIGGER_DELTA = 25
+const STOP_TRIGGER_DELTA = 5
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 //const ZOOMWINDOW = 31 // in index numbers
 
@@ -23,6 +25,8 @@ const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
 const slopeIntervals = ref<[number, number][]>([])
+const startThreshold = ref(START_TRIGGER_DELTA)
+const stopThreshold = ref(STOP_TRIGGER_DELTA)
 
 // computed getters
 const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
@@ -251,10 +255,20 @@ function gpx2GeoJson(input: string): FeatureCollection<LineString> {
 <template>
   <div class="container py-4 px-3 mx-auto">
     <h1>You did it!</h1>
-    <div>
-      Elevation analyzer
-      <button type="button" class="btn btn-primary">Analyze</button>
-    </div>
+    <form class="row row-cols-lg-auto g-3 align-items-center">
+      <div class="col-12">
+        <div class="input-group">
+          <div class="input-group-text">Slope start threshold</div>
+          <input type="text" class="form-control" v-model="startThreshold">
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="input-group">
+          <div class="input-group-text">Slope stop threshold</div>
+          <input type="text" class="form-control" v-model="stopThreshold">
+        </div>
+      </div>
+    </form>
     <DropField @files-dropped="processUploadFiles">
       <div class="row my-3 py-3 border">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
