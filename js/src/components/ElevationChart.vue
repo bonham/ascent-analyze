@@ -234,7 +234,13 @@ onMounted(() => {
         console.warn('⛔ Unable to get xValue from pixel position.');
         return;
       }
-      emit('highlight-xvalue', xValue);
+
+      // translate to virtual before emitting
+      const xValueVirtual = props.trackCoords?.toVirtualIndex(xValue)
+      //console.log("xvalue from elchart:", xValue, xValueVirtual)
+      if (xValueVirtual !== undefined) {
+        emit('highlight-xvalue', xValueVirtual);
+      }
     })
 
     canvas.addEventListener('wheel', (event) => {
