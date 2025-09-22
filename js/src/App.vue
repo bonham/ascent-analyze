@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import MapView from '@/components/MapView.vue';
 import ElevationChart from '@/components/ElevationChart.vue';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import type { TrackData, TrackSegment } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
-import type { FeatureCollection, Feature, LineString } from 'geojson';
+import type { FeatureCollection, Feature, LineString, MultiLineString } from 'geojson';
 import { Track2GeoJson } from '@/lib/Track2GeoJson';
 import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
 import DropField from '@/components/DropField.vue';
@@ -23,6 +23,34 @@ const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
 const slopeIntervals = ref<[number, number][]>([])
+
+// computed getters
+const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
+
+  if (lineStringFeature.value === null) {
+    return null
+  } else {
+
+    const coord = lineStringFeature.value.geometry.coordinates
+
+    const mlsCoordinates = slopeIntervals.value.map(
+      (intv) => coord.slice(intv[0], intv[1] + 1)
+    )
+
+    const multiLineString: MultiLineString = {
+      type: "MultiLineString",
+      coordinates: mlsCoordinates
+    }
+
+    const multiLineStringFeature: Feature<MultiLineString> = {
+      type: "Feature",
+      properties: {},
+      geometry: multiLineString
+    }
+    return multiLineStringFeature
+  }
+})
+
 
 // Interpolated full segment after initial load
 let zoomQueue: ZoomEventQueue
@@ -230,7 +258,8 @@ function gpx2GeoJson(input: string): FeatureCollection<LineString> {
     <DropField @files-dropped="processUploadFiles">
       <div class="row my-3 py-3 border">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
-          :zoom-on-update="zoomMapOnUpdate" @hover-index="mapViewMouseIndexValue = $event" />
+          :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate"
+          @hover-index="mapViewMouseIndexValue = $event" />
       </div>
     </DropField>
     <div class="row my-3 py-3 border">

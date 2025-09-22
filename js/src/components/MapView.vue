@@ -16,9 +16,9 @@ import Stroke from 'ol/style/Stroke';
 import CircleStyle from 'ol/style/Circle';
 import Fill from 'ol/style/Fill';
 import { fromLonLat, transform } from 'ol/proj';
-import Feature from 'ol/Feature';
-import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString } from 'geojson'
-import type { Geometry, LineString } from 'ol/geom';
+import OlFeature from 'ol/Feature';
+import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
+import type { Geometry as OlGeometry, LineString as OlLineString, MultiLineString as OlMultiLineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
 import { TrackPointIndex } from '@/lib/TrackPointIndex';
 import { MarkerOnTrack } from '@/lib/mapViewHelpers'
@@ -32,6 +32,7 @@ const mapContainer = ref<HTMLDivElement | null>(null);
 const props = defineProps<{
   highlightXpos: number | null; // Index of the selected point to highlight
   lineStringF: GeoJsonFeature<GeoJsonLineString> | null;
+  overlayLineStringF: GeoJsonFeature<GeoJsonMultiLineString> | null;
   zoomOnUpdate: boolean
 }>();
 
@@ -50,7 +51,8 @@ const markerLayer = new VectorLayer({
   })
 });
 const marker = new MarkerOnTrack(markerSource)
-const trackVectorSource = new VectorSource()
+const baseTrackVectorSource = new VectorSource()
+const overlayVectorSource = new VectorSource()
 
 // -----------------------------------------------------------------
 onMounted(async () => {
@@ -66,9 +68,21 @@ onMounted(async () => {
     })
   });
 
-  const vectorLayer = new VectorLayer({
-    source: trackVectorSource,
+  const overlayStyle = new Style({
+    stroke: new Stroke({
+      color: 'red',       // Or any CSS color
+      width: 5             // Adjust thickness here
+    })
+  });
+
+  const baseTrackVectorLayer = new VectorLayer({
+    source: baseTrackVectorSource,
     style: trackStyle      // Apply the custom style
+  });
+
+  const overlayVectorLayer = new VectorLayer({
+    source: overlayVectorSource,
+    style: overlayStyle      // Apply the custom style
   });
 
   const defaultCenter = fromLonLat([0, 0]); // Center on Null Island 🌍
@@ -79,7 +93,8 @@ onMounted(async () => {
     target: mapContainer.value,
     layers: [
       new TileLayer({ source: new OSM() }),
-      vectorLayer
+      baseTrackVectorLayer,
+      overlayVectorLayer
     ],
     view: new View({ // default projection is EPSG:3857
       center: defaultCenter,
@@ -92,22 +107,19 @@ onMounted(async () => {
   watch(() => props.lineStringF, (lineString) => {
     if (lineString === null) return
 
-    // incoming format: EPSG:3857 ( gpx )
-    const mapFeature = new GeoJSON().readFeature(
-      lineString,
-      {
-        dataProjection: 'EPSG:4326', // lat lon
-        featureProjection: 'EPSG:3857' // projection of map
-      }
-    ) as Feature<LineString>
+    const mapFeatureBaseTrack = geojsonFeature2mapFeature(lineString) as OlFeature<OlLineString>
+    if (props.overlayLineStringF === null) { throw new Error("This should not happen. computed property is empty") }
+    const mapFeatureOverlayTracks = geojsonFeature2mapFeature(props.overlayLineStringF) as OlFeature<OlLineString>
 
-    const geometry = mapFeature.getGeometry()
+    const geometry = mapFeatureBaseTrack.getGeometry()
     if (geometry === undefined) { return }
     const mapCoordinates = geometry.getCoordinates() // 3857
 
-    // make array and convert types
-    trackVectorSource.clear()
-    trackVectorSource.addFeature(mapFeature)
+    baseTrackVectorSource.clear()
+    baseTrackVectorSource.addFeature(mapFeatureBaseTrack)
+
+    overlayVectorSource.clear()
+    overlayVectorSource.addFeature(mapFeatureOverlayTracks)
 
     // initialize marker
     marker.setCoordinates(mapCoordinates)
@@ -121,7 +133,7 @@ onMounted(async () => {
     tpIndex = new TrackPointIndex(points)
 
     if (map && props.zoomOnUpdate) {
-      zoomToTrack(map, trackVectorSource)
+      zoomToTrack(map, baseTrackVectorSource)
     }
 
   })
@@ -173,7 +185,27 @@ onMounted(async () => {
   });
 });
 
-function zoomToTrack(map: Map, source: VectorSource<Feature<Geometry>>,) {
+function geojsonFeature2mapFeature(feature: GeoJsonFeature<GeoJsonLineString | GeoJsonMultiLineString>) {
+
+  // incoming format: EPSG:3857 ( gpx )
+  const mapFeature = new GeoJSON().readFeature(
+    feature,
+    {
+      dataProjection: 'EPSG:4326', // lat lon
+      featureProjection: 'EPSG:3857' // projection of map
+    }
+  )
+
+  if (feature.geometry.type === 'LineString') {
+    return mapFeature as OlFeature<OlLineString>
+  } else if (feature.geometry.type === 'MultiLineString') {
+    return mapFeature as OlFeature<OlMultiLineString>
+  } else {
+    throw new Error("Feature is not of expected types LineString / MultiLineString")
+  }
+}
+
+function zoomToTrack(map: Map, source: VectorSource<OlFeature<OlGeometry>>,) {
   const extent = source.getExtent();
   if (!isEmpty(extent)) {
     map.getView().fit(extent, {
