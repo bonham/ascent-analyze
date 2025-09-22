@@ -275,7 +275,10 @@ onMounted(() => {
         chartInstance.data.labels.length > 0 &&
         chartInstance.config.plugins
       ) {
-        const pixelX = chartInstance.scales['x'].getPixelForValue(newIndex); // e.g. 'March'
+        // convert cursorIndex ( virtual ) to internal index:
+        const newIndexVirtual = props.trackCoords?.toInternalIndex(newIndex)
+        if (newIndexVirtual === undefined) return
+        const pixelX = chartInstance.scales['x'].getPixelForValue(newIndexVirtual); // e.g. 'March'
         //console.log("Pixel X", pixelX)
         //        const pluginInstance = Chart.registry.plugins.get('verticalLinePlugin');
         const pluginInstance = verticalLinePlugin;
