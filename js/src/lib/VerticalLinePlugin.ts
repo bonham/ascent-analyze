@@ -42,8 +42,7 @@ function createVerticalLinePlugin() {
       canvas.addEventListener('mousemove', (event) => {
         const rect = canvas.getBoundingClientRect();
         verticalLinePlugin.mouseX = event.clientX - rect.left;
-        chart.draw(); // Trigger redraw
-
+        chart.draw(); // Trigger redraw. Clear the line
       });
 
       canvas.addEventListener('mouseleave', () => {
@@ -54,8 +53,15 @@ function createVerticalLinePlugin() {
     },
 
     afterDraw: (chart) => {
-      if (verticalLinePlugin.mouseX === null) return;
-      verticalLinePlugin._draw(chart, verticalLinePlugin.mouseX)
+      const x = verticalLinePlugin.mouseX
+      // do not draw line if:
+      if (
+        x === null ||
+        // mouse out of chart boundary
+        x < chart.chartArea.left ||
+        x > chart.chartArea.right
+      ) return;
+      verticalLinePlugin._draw(chart, x)
     }
   };
   return verticalLinePlugin
