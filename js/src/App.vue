@@ -83,6 +83,17 @@ async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
   return geojson
 }
 
+// dirty ! clean up below
+function updateOverlayIntervals() {
+  console.log("XX")
+  if (segmentIndexedGlobal === null) return
+  const overlayI = analyzeAscent(segmentIndexedGlobal.getSegment(), startThreshold.value, stopThreshold.value)
+  slopeIntervals.value = overlayI
+  refreshPage(segmentIndexedGlobal, overlayI)
+}
+
+let segmentIndexedGlobal: TrackSegmentIndexed | null = null
+
 function extractAfterLoad(featureCollection: FeatureCollection<LineString>) {
   // Convert from geojson to list of track objects
   const tracks = GeoJsonLoader.loadFromGeoJson(featureCollection);
@@ -94,7 +105,9 @@ function extractAfterLoad(featureCollection: FeatureCollection<LineString>) {
   // interpolate
   const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
   const segmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
-  const overlayIntervals = analyzeAscent(segmentIndexed.getSegment())
+  segmentIndexedGlobal = segmentIndexed
+
+  const overlayIntervals = analyzeAscent(segmentIndexed.getSegment(), startThreshold.value, stopThreshold.value)
   return { segmentIndexed, overlayIntervals }
 }
 
@@ -259,13 +272,15 @@ function gpx2GeoJson(input: string): FeatureCollection<LineString> {
       <div class="col-12">
         <div class="input-group">
           <div class="input-group-text">Slope start threshold</div>
-          <input type="text" class="form-control" v-model="startThreshold">
+          <input type="text" class="form-control" v-model="startThreshold" @change="updateOverlayIntervals"
+            @keydown.enter="updateOverlayIntervals">
         </div>
       </div>
       <div class="col-12">
         <div class="input-group">
           <div class="input-group-text">Slope stop threshold</div>
-          <input type="text" class="form-control" v-model="stopThreshold">
+          <input type="text" class="form-control" v-model="stopThreshold" @change="updateOverlayIntervals"
+            @keydown.enter="updateOverlayIntervals">
         </div>
       </div>
     </form>

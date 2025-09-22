@@ -124,6 +124,10 @@ watch(
   { immediate: false }
 );
 
+watch(
+  () => props.overlayIntervals, () => chartInstance !== null && props.trackCoords !== null && updateChart(chartInstance, props.trackCoords)
+)
+
 // Plugin to draw vertical line at mouseX
 const verticalLinePlugin = createVerticalLinePlugin()
 // Plugin to fill area below chart
