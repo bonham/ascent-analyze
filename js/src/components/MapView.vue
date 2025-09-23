@@ -10,13 +10,11 @@ import View from 'ol/View';
 import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import { fromLonLat, transform } from 'ol/proj';
-import OlFeature from 'ol/Feature';
-import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString, GeoJsonProperties } from 'geojson'
-import type { LineString as OlLineString } from 'ol/geom';
-import { TrackPointIndex } from '@/lib/TrackPointIndex';
+import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
+import { TrackPointIndex } from '@/lib/mapView/TrackPointIndex';
 import { MarkerOnTrack } from '@/lib/mapView/mapViewHelpers'
 import { getMapElements } from '@/lib/mapView/trackLayers';
-import { geojsonFeature2mapFeature } from '@/lib/mapView/geoJson2MapFeature';
+import { geojsonLineString2OpenLayersLineString, geojsonMultiLineString2OpenLayersMultiLineString } from '@/lib/mapView/geoJson2MapFeature';
 import { zoomToTrack } from '@/lib/mapView/zoomToTrack';
 
 
@@ -73,25 +71,23 @@ onMounted(async () => {
     })
   });
 
-  // ------- watcher to update track 
+  // ---------------    watcher to update track    ------------------
   watch(() => props.lineStringF, (lineString) => {
+
     if (lineString === null) return
 
-    const mapFeatureBaseTrack = geojsonFeature2mapFeature(lineString) as OlFeature<OlLineString>
-
-    const geometry = mapFeatureBaseTrack.getGeometry()
-    if (geometry === undefined) { return }
-    const mapCoordinates = geometry.getCoordinates() // 3857
-
+    // Update base track in map
+    const mapFeatureBaseTrack = geojsonLineString2OpenLayersLineString(lineString)
     baseTrackVectorSource.clear()
     baseTrackVectorSource.addFeature(mapFeatureBaseTrack)
 
-
-
     // initialize marker
+    const geometry = mapFeatureBaseTrack.getGeometry()
+    if (geometry === undefined) { return }
+    const mapCoordinates = geometry.getCoordinates() // 3857
     marker.setCoordinates(mapCoordinates)
 
-    // Update TrackpointIndex
+    // Update TrackpointIndex for emitting events
     const points = mapCoordinates.map(coord => {
       // convert to epsg 4326
       const [lon, lat] = transform(coord, 'EPSG:3857', 'EPSG:4326');
@@ -99,18 +95,20 @@ onMounted(async () => {
     })
     tpIndex = new TrackPointIndex(points)
 
+
     if (map && props.zoomOnUpdate) {
       zoomToTrack(map, baseTrackVectorSource)
     }
 
-  })
+  }, { immediate: true })
 
+  // ---------------    watcher to update slope overlay  ------------
   watch(() => props.overlayLineStringF, (newOverlayLinestring) => {
     if (newOverlayLinestring === null) return
     updateOverlay(newOverlayLinestring)
-  })
+  }, { immediate: true })
 
-  // ---- Watch for commands from outside component to draw / move the point marker on the track
+  // ---- Watch for commands from outside component to draw / move the point marker on the track ------------------
   watch(() => props.highlightXpos, (newXposIndex) => {
 
     if (newXposIndex === null) {
@@ -132,7 +130,7 @@ onMounted(async () => {
 
     marker.setByIndex(newXposIndex)
 
-  });
+  }, { immediate: true });
 
   // add listener to identify mouse near track
   map.on('pointermove', evt => {
@@ -156,10 +154,10 @@ onMounted(async () => {
   });
 });
 
-function updateOverlay(lineStringFeature: GeoJsonFeature<GeoJsonMultiLineString, GeoJsonProperties>) {
+function updateOverlay(lineStringFeature: GeoJsonFeature<GeoJsonMultiLineString>) {
 
   if (props.overlayLineStringF === null) { throw new Error("This should not happen. computed property is empty") }
-  const mapFeatureOverlayTracks = geojsonFeature2mapFeature(lineStringFeature) as OlFeature<OlLineString>
+  const mapFeatureOverlayTracks = geojsonMultiLineString2OpenLayersMultiLineString(lineStringFeature)
 
   overlayVectorSource.clear()
   overlayVectorSource.addFeature(mapFeatureOverlayTracks)

@@ -8,6 +8,9 @@ interface Point {
   lat: number;
 }
 
+/**
+ * Class to calculate nearest point of a list to a given point
+ */
 export class TrackPointIndex {
   index: KDBush;
   coordinates: Point[];
