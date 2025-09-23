@@ -4,31 +4,61 @@ import ElevationChart from '@/components/ElevationChart.vue';
 import { ref, onMounted, computed } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
-import type { TrackData, TrackSegment } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
 import type { FeatureCollection, Feature, LineString, MultiLineString } from 'geojson';
-import { Track2GeoJson } from '@/lib/Track2GeoJson';
 import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
-import { Gpx2Track } from './lib/Gpx2Track';
+import { gpx2GeoJson } from '@/lib/app/gpx2GeoJson';
+import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirstTrack';
+import { Track2GeoJson } from '@/lib/Track2GeoJson';
+
 
 const START_TRIGGER_DELTA = 25
 const STOP_TRIGGER_DELTA = 5
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 //const ZOOMWINDOW = 31 // in index numbers
 
-const lineStringFeature = ref<Feature<LineString> | null>(null)
+const featureCollection = ref<FeatureCollection>({ type: "FeatureCollection", features: [] })
 const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
-const slopeIntervals = ref<[number, number][]>([])
 const startThreshold = ref(START_TRIGGER_DELTA)
 const stopThreshold = ref(STOP_TRIGGER_DELTA)
 
-// computed getters
+// computed
+const trackSegmentIndexed = computed(() => {
+
+  // Convert from geojson to list of track objects
+  const tracks = GeoJsonLoader.loadFromGeoJson(featureCollection.value);
+
+  // Only first segment is taken into account
+  const segment = extractFirstSegmentFirstTrack(tracks)
+
+  // interpolate
+  const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
+  const segmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
+  return segmentIndexed
+})
+
+// computed lineStringFeature - depends on tracksegmentIndexed
+const lineStringFeature = computed(() => {
+  const segment = trackSegmentIndexed.value.getSegment()
+  const t2g = new Track2GeoJson(segment)
+  return t2g.toGeoJsonLineStringFeature()
+})
+
+// computed
+const zoomManager = computed(() => new ZoomManager(trackSegmentIndexed.value))
+
+// computed
+const slopeIntervals = computed<[number, number][]>(() =>
+  analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold.value, stopThreshold.value)
+)
+
+// computed
 const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
 
   if (lineStringFeature.value === null) {
@@ -36,7 +66,6 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
   } else {
 
     const coord = lineStringFeature.value.geometry.coordinates
-
     const mlsCoordinates = slopeIntervals.value.map(
       (intv) => coord.slice(intv[0], intv[1] + 1)
     )
@@ -64,15 +93,22 @@ onMounted(async () => {
   // loading the data should be done after mounted and all child components are ready ( chart, map )
 
   // Load the track data when the component is mounted
-  let geojson: FeatureCollection<LineString>;
   try {
-    geojson = await loadGeoJson()
-    const { segmentIndexed: initialSegmentIndexed, overlayIntervals } = extractAfterLoad(geojson)
-    refreshPage(initialSegmentIndexed, overlayIntervals)
+    featureCollection.value = await loadGeoJson()
+    zoomMapOnUpdate.value = true
+    elevationChartSegment.value = trackSegmentIndexed.value
+
   } catch (e) {
     console.error('Failed to load track data:', e);
     return
   }
+
+  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
+    const newSegment = zoomManager.value.applyFactorInternal(centerIndex, factor)
+    zoomMapOnUpdate.value = false
+    updateElevationChart(newSegment)
+  })
+
 
 })
 
@@ -83,86 +119,13 @@ async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
   return geojson
 }
 
-// dirty ! clean up below
-function updateOverlayIntervals() {
-  console.log("XX")
-  if (segmentIndexedGlobal === null) return
-  const overlayI = analyzeAscent(segmentIndexedGlobal.getSegment(), startThreshold.value, stopThreshold.value)
-  slopeIntervals.value = overlayI
-  refreshPage(segmentIndexedGlobal, overlayI)
-}
-
-let segmentIndexedGlobal: TrackSegmentIndexed | null = null
-
-function extractAfterLoad(featureCollection: FeatureCollection<LineString>) {
-  // Convert from geojson to list of track objects
-  const tracks = GeoJsonLoader.loadFromGeoJson(featureCollection);
-
-  // Only first segment is taken into account
-  const segment = extractFirstSegmentFirstTrack(tracks)
-
-
-  // interpolate
-  const segmentEquidistant = makeEquidistantTrackAkima(segment, POINT_DISTANCE)
-  const segmentIndexed = new TrackSegmentIndexed(segmentEquidistant, POINT_DISTANCE)
-  segmentIndexedGlobal = segmentIndexed
-
-  const overlayIntervals = analyzeAscent(segmentIndexed.getSegment(), startThreshold.value, stopThreshold.value)
-  return { segmentIndexed, overlayIntervals }
-}
-
-function refreshPage(segmentIndexed: TrackSegmentIndexed, overlayIntervals: [number, number][]) {
-  const zoomManager = new ZoomManager(segmentIndexed)
-  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-    const newSegment = zoomManager.applyFactorInternal(centerIndex, factor)
-    zoomMapOnUpdate.value = false
-    updateElevationChart(newSegment, overlayIntervals)
-  })
-
-  // initial update with zoom
-  zoomMapOnUpdate.value = true
-  updateMap(segmentIndexed)
-  updateElevationChart(segmentIndexed, overlayIntervals)
-}
-
-// extract first segment from first track
-function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
-  if (tracks.length === 0) {
-    console.log("No tracks found in input")
-    return []
-  } else {
-    if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
-    const segments = tracks[0].getSegments()
-    const numSegments = segments.length
-    if (numSegments === 0) {
-      console.log("No segments found in track.")
-      return []
-    }
-    else {
-      if (numSegments > 1) {
-        console.log(`Found ${numSegments} segments in track. Only first one will be processed`)
-      }
-      return segments[0]
-    }
-  }
-}
-
-/**
- * Updates Map 
- * @param newTrack New indexed track to use for updating 
- */
-function updateMap(newTrack: TrackSegmentIndexed) {
-  const newGeoJson = new Track2GeoJson(newTrack.getSegment()).toGeoJsonLineStringFeature()
-  lineStringFeature.value = newGeoJson
-}
 
 /**
  * Updates Elevation Chart
  * @param newTrack New indexed track to use for updating 
  */
-function updateElevationChart(newTrack: TrackSegmentIndexed, overlayIntervals: [number, number][]) {
+function updateElevationChart(newTrack: TrackSegmentIndexed) {
   elevationChartSegment.value = newTrack
-  slopeIntervals.value = overlayIntervals
 }
 
 /**
@@ -191,9 +154,9 @@ function handleZoomEvent(xValue: number, deltaY: number) {
 }
 
 async function processUploadFiles(files: FileList) {
-  const featureCollection = await readDroppedFile(files)
-  const { segmentIndexed: initialSegmentIndexed, overlayIntervals } = extractAfterLoad(featureCollection)
-  refreshPage(initialSegmentIndexed, overlayIntervals)
+  zoomMapOnUpdate.value = true
+  featureCollection.value = await readDroppedFile(files)
+  elevationChartSegment.value = trackSegmentIndexed.value
 }
 
 function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>> {
@@ -226,42 +189,7 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
 
 }
 
-function gpx2GeoJson(input: string): FeatureCollection<LineString> {
-  const g2t = new Gpx2Track(input)
-  console.log("Num Traks:", g2t.numTracks())
-  const fl = g2t.getTrackFeatures()
-  console.log("FL:", fl[0])
-  // console.log("FL:", JSON.stringify(fl, undefined, 2))
 
-  const firstFeature = fl[0]
-
-  function isLineStringFeature(obj: unknown): obj is Feature<LineString> {
-    return (
-      obj !== null &&
-      typeof obj === 'object' &&
-      obj &&
-      'type' in obj &&
-      obj.type === 'Feature' &&
-      'geometry' in obj &&
-      typeof obj.geometry === 'object' &&
-      obj.geometry !== null &&
-      'type' in obj.geometry &&
-      obj.geometry.type === 'LineString'
-    );
-  }
-
-  // Example usage:
-  if (!isLineStringFeature(firstFeature)) {
-    throw new Error('Uploaded file does not contain a valid LineString Feature');
-  }
-  const featureCollection: FeatureCollection<LineString> = {
-    type: "FeatureCollection",
-    features: [
-      firstFeature
-    ]
-  }
-  return featureCollection
-}
 
 </script>
 
@@ -272,15 +200,13 @@ function gpx2GeoJson(input: string): FeatureCollection<LineString> {
       <div class="col-12">
         <div class="input-group">
           <div class="input-group-text">Slope start threshold</div>
-          <input type="text" class="form-control" v-model="startThreshold" @change="updateOverlayIntervals"
-            @keydown.enter="updateOverlayIntervals">
+          <input type="text" class="form-control" v-model="startThreshold">
         </div>
       </div>
       <div class="col-12">
         <div class="input-group">
           <div class="input-group-text">Slope stop threshold</div>
-          <input type="text" class="form-control" v-model="stopThreshold" @change="updateOverlayIntervals"
-            @keydown.enter="updateOverlayIntervals">
+          <input type="text" class="form-control" v-model="stopThreshold">
         </div>
       </div>
     </form>

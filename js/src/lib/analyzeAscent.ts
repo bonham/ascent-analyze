@@ -54,7 +54,6 @@ export function analyzeAscent(seg: TrackSegment, startTrigger = START_TRIGGER_DE
       }
 
       hillStarted = false
-      console.log("start stop: ", hillStartIdx, hillStopIdx)
       if (hillStartIdx === null) { throw new Error("Hill start is null") }
       intervals.push([hillStartIdx, hillStopIdx])
     }
