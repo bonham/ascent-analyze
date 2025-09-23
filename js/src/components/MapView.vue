@@ -10,15 +10,15 @@ import View from 'ol/View';
 import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
-import GeoJSON from 'ol/format/GeoJSON';
 import { fromLonLat, transform } from 'ol/proj';
 import OlFeature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
-import type { Geometry as OlGeometry, LineString as OlLineString, MultiLineString as OlMultiLineString } from 'ol/geom';
+import type { Geometry as OlGeometry, LineString as OlLineString } from 'ol/geom';
 import { isEmpty } from 'ol/extent';
 import { TrackPointIndex } from '@/lib/TrackPointIndex';
 import { MarkerOnTrack } from '@/lib/mapViewHelpers'
 import { getMapElements } from '@/lib/mapView/trackLayers';
+import { geojsonFeature2mapFeature } from '@/lib/geoJson2MapFeature';
 
 
 let map: Map;
@@ -152,29 +152,10 @@ onMounted(async () => {
     } else {
       marker.clear()
     }
-
   });
 });
 
-function geojsonFeature2mapFeature(feature: GeoJsonFeature<GeoJsonLineString | GeoJsonMultiLineString>) {
 
-  // incoming format: EPSG:3857 ( gpx )
-  const mapFeature = new GeoJSON().readFeature(
-    feature,
-    {
-      dataProjection: 'EPSG:4326', // lat lon
-      featureProjection: 'EPSG:3857' // projection of map
-    }
-  )
-
-  if (feature.geometry.type === 'LineString') {
-    return mapFeature as OlFeature<OlLineString>
-  } else if (feature.geometry.type === 'MultiLineString') {
-    return mapFeature as OlFeature<OlMultiLineString>
-  } else {
-    throw new Error("Feature is not of expected types LineString / MultiLineString")
-  }
-}
 
 function zoomToTrack(map: Map, source: VectorSource<OlFeature<OlGeometry>>,) {
   const extent = source.getExtent();
