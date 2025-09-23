@@ -112,7 +112,6 @@ onMounted(async () => {
   watch(() => props.highlightXpos, (newXposIndex) => {
 
     if (newXposIndex === null) {
-      console.warn('new x pos is null');
       marker.clear();
       return;
     }
