@@ -7,14 +7,10 @@ import { onMounted, ref, watch } from 'vue';
 import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
-import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
+import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
-import Style from 'ol/style/Style';
-import Stroke from 'ol/style/Stroke';
-import CircleStyle from 'ol/style/Circle';
-import Fill from 'ol/style/Fill';
 import { fromLonLat, transform } from 'ol/proj';
 import OlFeature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
@@ -22,6 +18,7 @@ import type { Geometry as OlGeometry, LineString as OlLineString, MultiLineStrin
 import { isEmpty } from 'ol/extent';
 import { TrackPointIndex } from '@/lib/TrackPointIndex';
 import { MarkerOnTrack } from '@/lib/mapViewHelpers'
+import { getMapElements } from '@/lib/mapView/trackLayers';
 
 
 let map: Map;
@@ -40,19 +37,17 @@ const emit = defineEmits<{
   (e: 'hoverIndex', index: number): void;
 }>();
 
-const markerSource = new VectorSource();
-const markerLayer = new VectorLayer({
-  source: markerSource,
-  style: new Style({
-    image: new CircleStyle({
-      radius: 6,
-      fill: new Fill({ color: 'red' }) // Customize your highlight color here
-    })
-  })
-});
+const {
+  baseTrackVectorSource,
+  baseTrackVectorLayer,
+  overlayVectorSource,
+  overlayVectorLayer,
+  markerSource,
+  markerLayer
+} = getMapElements()
+
 const marker = new MarkerOnTrack(markerSource)
-const baseTrackVectorSource = new VectorSource()
-const overlayVectorSource = new VectorSource()
+
 
 // -----------------------------------------------------------------
 onMounted(async () => {
@@ -61,32 +56,8 @@ onMounted(async () => {
   // ---- setup layer
   if (!mapContainer.value) return;
 
-  const trackStyle = new Style({
-    stroke: new Stroke({
-      color: 'blue',       // Or any CSS color
-      width: 4             // Adjust thickness here
-    })
-  });
-
-  const overlayStyle = new Style({
-    stroke: new Stroke({
-      color: 'red',       // Or any CSS color
-      width: 5             // Adjust thickness here
-    })
-  });
-
-  const baseTrackVectorLayer = new VectorLayer({
-    source: baseTrackVectorSource,
-    style: trackStyle      // Apply the custom style
-  });
-
-  const overlayVectorLayer = new VectorLayer({
-    source: overlayVectorSource,
-    style: overlayStyle      // Apply the custom style
-  });
-
-  const defaultCenter = fromLonLat([0, 0]); // Center on Null Island 🌍
-  const defaultZoom = 2;                    // World view
+  const defaultCenter = fromLonLat([8.67673, 49.41053]);
+  const defaultZoom = 7;                    // World view
 
   // ---- setup map
   map = new Map({
@@ -94,14 +65,14 @@ onMounted(async () => {
     layers: [
       new TileLayer({ source: new OSM() }),
       baseTrackVectorLayer,
-      overlayVectorLayer
+      overlayVectorLayer,
+      markerLayer
     ],
     view: new View({ // default projection is EPSG:3857
       center: defaultCenter,
       zoom: defaultZoom
     })
   });
-  map.addLayer(markerLayer);
 
   // ------- watcher to update track 
   watch(() => props.lineStringF, (lineString) => {
