@@ -9,16 +9,15 @@ import Map from 'ol/Map';
 import View from 'ol/View';
 import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
-import VectorSource from 'ol/source/Vector';
 import { fromLonLat, transform } from 'ol/proj';
 import OlFeature from 'ol/Feature';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
-import type { Geometry as OlGeometry, LineString as OlLineString } from 'ol/geom';
-import { isEmpty } from 'ol/extent';
+import type { LineString as OlLineString } from 'ol/geom';
 import { TrackPointIndex } from '@/lib/TrackPointIndex';
-import { MarkerOnTrack } from '@/lib/mapViewHelpers'
+import { MarkerOnTrack } from '@/lib/mapView/mapViewHelpers'
 import { getMapElements } from '@/lib/mapView/trackLayers';
-import { geojsonFeature2mapFeature } from '@/lib/geoJson2MapFeature';
+import { geojsonFeature2mapFeature } from '@/lib/mapView/geoJson2MapFeature';
+import { zoomToTrack } from '@/lib/mapView/zoomToTrack';
 
 
 let map: Map;
@@ -155,19 +154,6 @@ onMounted(async () => {
   });
 });
 
-
-
-function zoomToTrack(map: Map, source: VectorSource<OlFeature<OlGeometry>>,) {
-  const extent = source.getExtent();
-  if (!isEmpty(extent)) {
-    map.getView().fit(extent, {
-      padding: [50, 50, 50, 50],
-      maxZoom: 17,
-      duration: 1000
-    });
-    map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 800 });
-  }
-}
 
 
 
