@@ -11,7 +11,7 @@ import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import { fromLonLat, transform } from 'ol/proj';
 import OlFeature from 'ol/Feature';
-import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
+import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString, GeoJsonProperties } from 'geojson'
 import type { LineString as OlLineString } from 'ol/geom';
 import { TrackPointIndex } from '@/lib/TrackPointIndex';
 import { MarkerOnTrack } from '@/lib/mapView/mapViewHelpers'
@@ -78,8 +78,6 @@ onMounted(async () => {
     if (lineString === null) return
 
     const mapFeatureBaseTrack = geojsonFeature2mapFeature(lineString) as OlFeature<OlLineString>
-    if (props.overlayLineStringF === null) { throw new Error("This should not happen. computed property is empty") }
-    const mapFeatureOverlayTracks = geojsonFeature2mapFeature(props.overlayLineStringF) as OlFeature<OlLineString>
 
     const geometry = mapFeatureBaseTrack.getGeometry()
     if (geometry === undefined) { return }
@@ -88,8 +86,7 @@ onMounted(async () => {
     baseTrackVectorSource.clear()
     baseTrackVectorSource.addFeature(mapFeatureBaseTrack)
 
-    overlayVectorSource.clear()
-    overlayVectorSource.addFeature(mapFeatureOverlayTracks)
+
 
     // initialize marker
     marker.setCoordinates(mapCoordinates)
@@ -106,6 +103,11 @@ onMounted(async () => {
       zoomToTrack(map, baseTrackVectorSource)
     }
 
+  })
+
+  watch(() => props.overlayLineStringF, (newOverlayLinestring) => {
+    if (newOverlayLinestring === null) return
+    updateOverlay(newOverlayLinestring)
   })
 
   // ---- Watch for commands from outside component to draw / move the point marker on the track
@@ -154,6 +156,14 @@ onMounted(async () => {
   });
 });
 
+function updateOverlay(lineStringFeature: GeoJsonFeature<GeoJsonMultiLineString, GeoJsonProperties>) {
+
+  if (props.overlayLineStringF === null) { throw new Error("This should not happen. computed property is empty") }
+  const mapFeatureOverlayTracks = geojsonFeature2mapFeature(lineStringFeature) as OlFeature<OlLineString>
+
+  overlayVectorSource.clear()
+  overlayVectorSource.addFeature(mapFeatureOverlayTracks)
+}
 
 
 
