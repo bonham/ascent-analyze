@@ -21,6 +21,18 @@ function makeEquidistantTrackAkima(coords: TrackSegment, interval: number): Trac
   const lons = coords.map(c => c.lon);
   const elevs = coords.map(c => c.elevation);
 
+  // remove duplicate distances from distances lats lons and elevs 
+  // these would cause issues with the interpolator
+  // need to remove from end to start to keep indices valid
+  const duplicateIndices = detectEqualElements(distances);
+  for (let i = duplicateIndices.length - 1; i >= 0; i--) {
+    const index = duplicateIndices[i];
+    distances.splice(index, 1);
+    lats.splice(index, 1);
+    lons.splice(index, 1);
+    elevs.splice(index, 1);
+  }
+
   // Create Akima interpolators
 
   const latInterp = createInterpolatorWithFallback(InterpolationMethod, distances, lats);
@@ -48,4 +60,19 @@ function makeEquidistantTrackAkima(coords: TrackSegment, interval: number): Trac
   return newCoords;
 }
 
-export { makeEquidistantTrackAkima };
+/**
+ * Searches array for elements which are equal previous element.
+ * Indices of found elements are returned in an array
+ */
+function detectEqualElements(a: unknown[]): number[] {
+  if (a.length === 0) return []
+  const indices: number[] = []
+  for (let i = 1; i < a.length; i++) {
+    if (a[i] === a[i - 1]) {
+      indices.push(i)
+    }
+  }
+  return indices
+}
+
+export { makeEquidistantTrackAkima, detectEqualElements };

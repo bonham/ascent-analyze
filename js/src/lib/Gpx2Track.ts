@@ -61,8 +61,9 @@ class Gpx2Track {
     this.trackFeatures = this._storeTrackFeatures()
     this.extendedSegments = this._storeExtendedSegments()
 
-    if (this.trackFeatures.length !== this.numTracks()) throw Error(`Track features length '${this.trackFeatures.length} not matching ${this.numTracks()}`)
-    if (this.extendedSegments.length !== this.numTracks()) throw Error(`Track extendedSegments length '${this.extendedSegments.length} not matching ${this.numTracks()}`)
+    const numTracks = this.numTracks()
+    if (this.trackFeatures.length !== numTracks) throw Error(`Track features length '${this.trackFeatures.length} not matching numtracks ${numTracks}`)
+    if (this.extendedSegments.length !== numTracks) throw Error(`Track extendedSegments length '${this.extendedSegments.length} not matching ${numTracks}`)
   }
 
 
