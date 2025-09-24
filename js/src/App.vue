@@ -15,8 +15,9 @@ import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirs
 import { Track2GeoJson } from '@/lib/Track2GeoJson';
 
 
-const START_TRIGGER_DELTA = 25
-const STOP_TRIGGER_DELTA = 5
+const START_TRIGGER_GRADIENT = 5 // in percent
+const STOP_TRIGGER_GRADIENT = 1
+const WINDOW_SIZE_METERS = 500; // in index numbers 
 const POINT_DISTANCE = 100; // Distance in meters for equidistant points
 //const ZOOMWINDOW = 31 // in index numbers
 
@@ -25,8 +26,23 @@ const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
-const startThreshold = ref(START_TRIGGER_DELTA)
-const stopThreshold = ref(STOP_TRIGGER_DELTA)
+const windowSizeMeters = ref(WINDOW_SIZE_METERS)
+const startGradient = ref(START_TRIGGER_GRADIENT)
+const stopGradient = ref(STOP_TRIGGER_GRADIENT)
+
+const windowSizePoints = computed(() => {
+  const v = Math.round(windowSizeMeters.value / POINT_DISTANCE)
+  return v < 2 ? 2 : v // minimum window size is 2 points
+})
+
+const startThreshold_m = computed(() => {
+  // convert from gradient percent to meters
+  return (startGradient.value * windowSizeMeters.value) / 100
+})
+const stopThreshold_m = computed(() => {
+  // convert from gradient percent to meters
+  return (stopGradient.value * windowSizeMeters.value) / 100
+})
 
 // computed
 const trackSegmentIndexed = computed(() => {
@@ -55,7 +71,7 @@ const zoomManager = computed(() => new ZoomManager(trackSegmentIndexed.value))
 
 // computed
 const slopeIntervals = computed<[number, number][]>(() =>
-  analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold.value, stopThreshold.value)
+  analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold_m.value, stopThreshold_m.value, windowSizePoints.value)
 )
 
 // computed
@@ -199,14 +215,20 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
     <form class="row row-cols-lg-auto g-3 align-items-center">
       <div class="col-12">
         <div class="input-group">
-          <div class="input-group-text">Slope start threshold</div>
-          <input type="text" class="form-control" v-model="startThreshold">
+          <div class="input-group-text">Slope start gradient</div>
+          <input type="text" class="form-control" v-model="startGradient">
         </div>
       </div>
       <div class="col-12">
         <div class="input-group">
-          <div class="input-group-text">Slope stop threshold</div>
-          <input type="text" class="form-control" v-model="stopThreshold">
+          <div class="input-group-text">Slope stop gradient</div>
+          <input type="text" class="form-control" v-model="stopGradient">
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="input-group">
+          <div class="input-group-text">Window Size</div>
+          <input type="text" class="form-control" v-model="windowSizeMeters">
         </div>
       </div>
     </form>

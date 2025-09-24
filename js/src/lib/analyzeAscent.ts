@@ -2,14 +2,17 @@ import type { TrackSegment } from '@/lib/TrackData'
 
 const START_TRIGGER_DELTA = 25
 const STOP_TRIGGER_DELTA = 5
+const WINDOW_SIZE = 5
 
-export function analyzeAscent(seg: TrackSegment, startTrigger = START_TRIGGER_DELTA, stopTrigger = STOP_TRIGGER_DELTA) {
+export function analyzeAscent(
+  seg: TrackSegment,
+  startTrigger = START_TRIGGER_DELTA,
+  stopTrigger = STOP_TRIGGER_DELTA,
+  windowSize = WINDOW_SIZE,
+) {
   // analyze subsequent points
 
   // hill start : 5% über 500 m: entspricht 25 m über 500m - 5m pro 100m 
-
-  const WINDOWSIZE = 5
-
 
   let hillStarted = false
   let hillStartIdx: null | number = null
@@ -17,9 +20,10 @@ export function analyzeAscent(seg: TrackSegment, startTrigger = START_TRIGGER_DE
 
   const intervals: [number, number][] = []
 
-  for (let idx = WINDOWSIZE - 1; idx < seg.length; idx++) {
+  for (let idx = windowSize - 1; idx < seg.length; idx++) {
 
-    const windowStartIdx = idx - WINDOWSIZE + 1
+    if (windowSize < 2) return [] // no analysis possible)
+    const windowStartIdx = idx - windowSize + 1
 
     const lastPoint = seg[windowStartIdx]
     const thisPoint = seg[idx]
