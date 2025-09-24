@@ -130,7 +130,7 @@ onMounted(async () => {
 
 // Load a geojson file
 async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
-  const response = await fetch('/kl.json');
+  const response = await fetch('./kl.json');
   const geojson = await response.json();
   return geojson
 }
