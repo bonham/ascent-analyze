@@ -16,6 +16,7 @@ import { MarkerOnTrack } from '@/lib/mapView/mapViewHelpers'
 import { getMapElements } from '@/lib/mapView/trackLayers';
 import { geojsonLineString2OpenLayersLineString, geojsonMultiLineString2OpenLayersMultiLineString } from '@/lib/mapView/geoJson2MapFeature';
 import { zoomToTrack } from '@/lib/mapView/zoomToTrack';
+import type { MapBrowserEvent } from 'ol';
 
 
 let map: Map;
@@ -133,6 +134,17 @@ onMounted(async () => {
 
   // add listener to identify mouse near track
   map.on('pointermove', evt => {
+    if (evt.dragging) {
+      // on touch devices
+      return; // do nothing if the map is being dragged
+    }
+    handleCoordinateSelectAndMove(evt)
+  });
+  map.on('click', evt => {
+    handleCoordinateSelectAndMove(evt)
+  });
+
+  function handleCoordinateSelectAndMove(evt: MapBrowserEvent<KeyboardEvent | WheelEvent | PointerEvent>) {
     const coordinate = map.getCoordinateFromPixel(evt.pixel);
     const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326');
 
@@ -150,7 +162,7 @@ onMounted(async () => {
     } else {
       marker.clear()
     }
-  });
+  }
 });
 
 function updateOverlay(lineStringFeature: GeoJsonFeature<GeoJsonMultiLineString>) {

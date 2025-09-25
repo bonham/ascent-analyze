@@ -39,16 +39,19 @@ function createVerticalLinePlugin() {
       const canvas = chart.canvas
 
       // Track mouse position relative to canvas
-      canvas.addEventListener('mousemove', (event) => {
+      canvas.addEventListener('pointermove', (event) => {
         const rect = canvas.getBoundingClientRect();
         verticalLinePlugin.mouseX = event.clientX - rect.left;
         chart.draw(); // Trigger redraw. Clear the line
       });
 
-      canvas.addEventListener('mouseleave', () => {
+      canvas.addEventListener('pointerleave', () => {
         verticalLinePlugin.mouseX = null;
         chart.draw(); // Clear the line
-
+      });
+      canvas.addEventListener('pointerup', () => {
+        verticalLinePlugin.mouseX = null;
+        chart.draw(); // Clear the line
       });
     },
 
