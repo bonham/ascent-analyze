@@ -222,38 +222,14 @@ onMounted(() => {
     console.warn('⛔ Chart instance is not initialized. Cannot add event listener');
   } else {
 
-    canvas.addEventListener('touchmove', (event) => {
-      const rect = canvas.getBoundingClientRect();
-      const touch = event.touches[0];
-      const x = touch.clientX - rect.left;
-      const xValueVirtual = eventX2VirtualX(x)
-      if (xValueVirtual !== undefined) {
-        // console.log("Touch move", x, "Value virtual:", xValueVirtual);
-        emit('highlight-xvalue', xValueVirtual);
-      }
-    });
-    canvas.addEventListener('touchstart', (event) => {
-      // Get touch position relative to canvas
-      const rect = canvas.getBoundingClientRect();
-      const touch = event.touches[0];
-      const x = touch.clientX - rect.left;
-      const xValueVirtual = eventX2VirtualX(x)
-      if (xValueVirtual !== undefined) {
-        // console.log("Touchstart X", x, "Value virtual:", xValueVirtual);
-        emit('highlight-xvalue', xValueVirtual);
-      }
-    })
-    // Add mousemove event listener for highlighting points
-    canvas.addEventListener('mousemove', (event) => {
 
-      // Get mouse position relative to canvas
-      const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const xValueVirtual = eventX2VirtualX(x)
-      if (xValueVirtual !== undefined) {
-        // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
-        emit('highlight-xvalue', xValueVirtual);
-      }
+    // Add event listener for highlighting points
+    canvas.addEventListener('pointermove', (event) => {
+      handlePointerEvent(canvas, event)
+    })
+
+    canvas.addEventListener('pointerdown', (event) => {
+      handlePointerEvent(canvas, event)
     })
 
     canvas.addEventListener('wheel', (event) => {
@@ -275,6 +251,20 @@ onMounted(() => {
       emit('zoom', xValue, event.deltaY)
 
     })
+
+  }
+
+  function handlePointerEvent(canvas: HTMLCanvasElement, event: PointerEvent) {
+    event.preventDefault()
+    // event.stopPropagation() do we need this?
+    // Get mouse position relative to canvas
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const xValueVirtual = eventX2VirtualX(x)
+    if (xValueVirtual !== undefined) {
+      // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
+      emit('highlight-xvalue', xValueVirtual);
+    }
 
   }
 
