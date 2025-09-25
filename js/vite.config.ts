@@ -14,7 +14,8 @@ export default defineConfig({
     vueDevTools(),
   ],
   server: {
-    port: 4000
+    port: 4000,
+    host: "elchdesk.fritz.box"
   },
   resolve: {
     alias: {

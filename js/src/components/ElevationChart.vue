@@ -222,27 +222,36 @@ onMounted(() => {
     console.warn('⛔ Chart instance is not initialized. Cannot add event listener');
   } else {
 
+    canvas.addEventListener('touchmove', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const touch = event.touches[0];
+      const x = touch.clientX - rect.left;
+      const xValueVirtual = eventX2VirtualX(x)
+      if (xValueVirtual !== undefined) {
+        // console.log("Touch move", x, "Value virtual:", xValueVirtual);
+        emit('highlight-xvalue', xValueVirtual);
+      }
+    });
+    canvas.addEventListener('touchstart', (event) => {
+      // Get touch position relative to canvas
+      const rect = canvas.getBoundingClientRect();
+      const touch = event.touches[0];
+      const x = touch.clientX - rect.left;
+      const xValueVirtual = eventX2VirtualX(x)
+      if (xValueVirtual !== undefined) {
+        // console.log("Touchstart X", x, "Value virtual:", xValueVirtual);
+        emit('highlight-xvalue', xValueVirtual);
+      }
+    })
     // Add mousemove event listener for highlighting points
-
     canvas.addEventListener('mousemove', (event) => {
+
       // Get mouse position relative to canvas
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
-
-      // Convert pixel position to x-axis value using chart scales
-      let xValue: number | undefined;
-      if (chartInstance) {
-        xValue = chartInstance.scales['x'].getValueForPixel(x);
-      }
-      if (xValue === undefined) {
-        console.warn('⛔ Unable to get xValue from pixel position.');
-        return;
-      }
-
-      // translate to virtual before emitting
-      const xValueVirtual = props.trackCoords?.toVirtualIndex(xValue)
-      //console.log("xvalue from elchart:", xValue, xValueVirtual)
+      const xValueVirtual = eventX2VirtualX(x)
       if (xValueVirtual !== undefined) {
+        // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
         emit('highlight-xvalue', xValueVirtual);
       }
     })
@@ -268,6 +277,21 @@ onMounted(() => {
     })
 
   }
+
+  function eventX2VirtualX(x: number) {
+    let xValue: number | undefined;
+    if (chartInstance) {
+      xValue = chartInstance.scales['x'].getValueForPixel(x);
+    }
+    if (xValue === undefined) {
+      console.warn('⛔ Unable to get xValue from pixel position.');
+      return;
+    }
+
+    const xValueVirtual = props.trackCoords?.toVirtualIndex(xValue);
+    return xValueVirtual;
+  }
+
   // watch vertical cursor external change
   watch(
     () => props.cursorIndex,
