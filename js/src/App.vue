@@ -211,8 +211,13 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
 
 <template>
   <div class="container py-4 px-3 mx-auto">
-    <h1>You did it!</h1>
-    <form class="row row-cols-lg-auto g-3 align-items-center">
+    <nav class="row navbar bg-body-tertiary mb-3">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">La Rampa</span>
+        <DropPanel @files-dropped="processUploadFiles" />
+      </div>
+    </nav>
+    <form class="row row-cols-lg-auto my-3 g-3 align-items-center">
       <div class="col-12">
         <div class="input-group">
           <div class="input-group-text">Slope start gradient</div>
@@ -233,7 +238,7 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
       </div>
     </form>
     <DropField @files-dropped="processUploadFiles">
-      <div class="row my-3 py-3 border">
+      <div class="row border py-3">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
           :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate"
           @hover-index="mapViewMouseIndexValue = $event" />
@@ -245,7 +250,6 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
         :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
   </div>
-  <DropPanel @files-dropped="processUploadFiles" />
 </template>
 
 <style scoped></style>

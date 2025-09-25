@@ -181,6 +181,6 @@ function updateOverlay(lineStringFeature: GeoJsonFeature<GeoJsonMultiLineString>
 <style scoped>
 .map {
   width: 100%;
-  height: 400px;
+  height: 350px;
 }
 </style>

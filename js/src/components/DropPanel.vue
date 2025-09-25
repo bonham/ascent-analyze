@@ -18,21 +18,14 @@ function reEmit(payload: FileList) {
 <template>
   <DropField @files-dropped="reEmit">
     <label for="input" class="border border-1 rounded p-2 d-flex flex-row">
-      <div
-        class="flex-grow-1 border border-3 rounded-2 border-secondary-subtle dropzone d-flex align-items-center justify-content-center text-secondary">
-        Drop files or klick to upload
+      <div>
+        Upload
       </div>
     </label>
     <input id="input" type="file" multiple class="hideinput" @change="onChange">
   </DropField>
 </template>
 <style scoped>
-.dropzone {
-  --bs-border-style: dashed;
-  height: 8em;
-  margin: 2em 8em 2em 8em;
-}
-
 .hideinput {
   opacity: 0;
   position: absolute !important;
