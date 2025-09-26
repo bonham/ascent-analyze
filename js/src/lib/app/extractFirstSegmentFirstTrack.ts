@@ -2,7 +2,7 @@
 import type { TrackData, TrackSegment } from '@/lib/TrackData'
 export function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment {
   if (tracks.length === 0) {
-    console.log("No tracks found in input")
+    // console.log("No tracks found in input")
     return []
   } else {
     if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
