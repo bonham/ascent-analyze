@@ -82,7 +82,7 @@ const intervalDetails = computed(() => {
     const elevGain = end.elevation - start.elevation
     const avgGradient = (elevGain / dist) * 100
     return {
-      id: idx,
+      id: idx + 1,
       startIndex: intv[0],
       endIndex: intv[1],
       start_distance_m: start.distanceFromStart,
