@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUpdated, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackData';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
@@ -78,8 +78,8 @@ function updateChart(chartInstance: Chart<'line'>, segmentI: TrackSegmentIndexed
   chartInstance.data.datasets[0].data = primaryLineData
   chartInstance.data.datasets[1].data = overlayLineData
 
-  type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
-  chartInstance.update('scroll_update' as MyUpdateArgType);
+  //type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
+  chartInstance.update('none');
 }
 
 function intervalsToInternal(si: TrackSegmentIndexed, sourceIntervals: number[][]) {
@@ -121,7 +121,7 @@ watch(
       updateChart(chartInstance, newTrackSegmentI)
     }
   },
-  { immediate: false }
+  { immediate: true }
 );
 
 watch(
@@ -133,9 +133,14 @@ const verticalLinePlugin = createVerticalLinePlugin()
 // Plugin to fill area below chart
 //const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
 
+onUpdated(() => {
+  if (chartInstance !== null) {
+    chartInstance.update('none')
+  }
+})
+
 // 🎨 Initialize chart once on mount
 onMounted(() => {
-
   const scales = {
     x: {
       title: {
@@ -222,6 +227,8 @@ onMounted(() => {
     console.warn('⛔ Chart instance is not initialized. Cannot add event listener');
   } else {
 
+    // draw chart
+    chartInstance.update();
 
     // Add event listener for highlighting points
     // Reminder: touchmove does not work in iphone - getting lags
