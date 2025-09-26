@@ -128,6 +128,11 @@ class TrackSegmentIndexed {
     return this.arrayOfIndexedPoints[length - 1].index
   }
 
+  /**
+   * Get point by virtual index
+   * @param index Virtual index
+   * @returns Point or undefined if not found
+   */
   get(index: number) {
     return this.pointsByIndex[index]
   }

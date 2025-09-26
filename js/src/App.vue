@@ -74,6 +74,25 @@ const slopeIntervals = computed<[number, number][]>(() =>
   analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold_m.value, stopThreshold_m.value, windowSizePoints.value)
 )
 
+const intervalDetails = computed(() => {
+  return slopeIntervals.value.map((intv, idx) => {
+    const start = trackSegmentIndexed.value.get(intv[0])
+    const end = trackSegmentIndexed.value.get(intv[1])
+    const dist = (end.distanceFromStart - start.distanceFromStart)
+    const elevGain = end.elevation - start.elevation
+    const avgGradient = (elevGain / dist) * 100
+    return {
+      id: idx,
+      startIndex: intv[0],
+      endIndex: intv[1],
+      start_distance_m: start.distanceFromStart,
+      interval_size_m: dist,
+      elevationGain_m: elevGain,
+      averageGradient_percent: avgGradient
+    }
+  })
+})
+
 // computed
 const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
 
@@ -195,7 +214,7 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
 </script>
 
 <template>
-  <div class="container py-4 px-3 mx-auto">
+  <div class="container py-1 px-3 mx-auto">
     <nav class="row navbar bg-body-tertiary mb-3">
       <div class="container-fluid">
         <span class="navbar-brand mb-0 h1">La Rampa</span>
@@ -234,7 +253,29 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
         :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>
-  </div>
+    <div class="row my-3">
+      <table class="table table-sm table-bordered smallfont">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Start (km)</th>
+            <th>Length (km)</th>
+            <th>Elev. Gain (m)</th>
+            <th>Grad (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in intervalDetails" :key="item.id">
+            <td>{{ item.id }}</td>
+            <td>{{ item.start_distance_m / 1000 }}</td>
+            <td>{{ item.interval_size_m / 1000 }}</td>
+            <td>{{ item.elevationGain_m.toFixed(0) }}</td>
+            <td>{{ item.averageGradient_percent.toFixed(1) }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div> <!-- Container -->
 </template>
 
 <style scoped>
