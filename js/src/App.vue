@@ -202,23 +202,23 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
         <DropPanel @files-dropped="processUploadFiles" />
       </div>
     </nav>
-    <form class="row row-cols-lg-auto my-3 g-3 align-items-center">
-      <div class="col-12">
+    <form class="row mb-3 g-2">
+      <div class="col">
         <div class="input-group">
-          <div class="input-group-text">Slope start gradient</div>
-          <input type="text" class="form-control" v-model="startGradient">
+          <span class="input-group-text smallfont">Start %</span>
+          <input type="text" class="form-control smallfont" v-model="startGradient">
         </div>
       </div>
-      <div class="col-12">
+      <div class="col">
         <div class="input-group">
-          <div class="input-group-text">Slope stop gradient</div>
-          <input type="text" class="form-control" v-model="stopGradient">
+          <span class="input-group-text smallfont">Stop %</span>
+          <input type="text" class="form-control smallfont" v-model="stopGradient">
         </div>
       </div>
-      <div class="col-12">
+      <div class="col">
         <div class="input-group">
-          <div class="input-group-text">Window Size</div>
-          <input type="text" class="form-control" v-model="windowSizeMeters">
+          <span class="input-group-text smallfont">Window</span>
+          <input type="text" class="form-control smallfont" v-model="windowSizeMeters">
         </div>
       </div>
     </form>
@@ -237,4 +237,8 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.smallfont {
+  font-size: 0.65rem;
+}
+</style>
