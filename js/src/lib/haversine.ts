@@ -7,7 +7,7 @@ import type { TrackPoint } from './TrackData';
  * @param point2 - The second TrackPoint.
  * @returns The distance between the two coordinates in meters.
  */
-function haversineDistance(point1: TrackPoint, point2: TrackPoint): number {
+function haversineDistance(point1: { lat: number, lon: number }, point2: { lat: number, lon: number }): number {
   const R = 6371000;
   const toRad = (deg: number) => deg * Math.PI / 180;
 

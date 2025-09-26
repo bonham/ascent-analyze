@@ -5,14 +5,14 @@ import { ref, computed } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
-import type { FeatureCollection, Feature, LineString, MultiLineString } from 'geojson';
+import type { FeatureCollection, Feature, MultiLineString } from 'geojson';
 import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
-import { gpx2GeoJson } from '@/lib/app/gpx2GeoJson';
 import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirstTrack';
 import { Track2GeoJson } from '@/lib/Track2GeoJson';
+import { readDroppedFile } from '@/lib/fileReader/readDroppedFile';
 
 
 const START_TRIGGER_GRADIENT = 5 // in percent
@@ -195,35 +195,6 @@ async function processUploadFiles(files: FileList) {
   elevationChartSegment.value = trackSegmentIndexed.value
 }
 
-function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>> {
-
-  const prom: Promise<FeatureCollection<LineString>> = new Promise((resolve, reject) => {
-
-    if (files.length < 1) {
-      reject(new Error("Filelist is empty"))
-    }
-
-    // take only first file from input
-    const thisFile = files[0]
-    if (thisFile === null) {
-      reject(new Error("File is null"))
-    } else {
-
-      const fr = new FileReader()
-      fr.addEventListener('load', () => {
-        if (fr.result !== null && typeof fr.result === 'string') {
-          const featureCollection = gpx2GeoJson(fr.result)
-          resolve(featureCollection)
-        }
-      })
-      fr.readAsText(thisFile) // async
-    }
-
-  })
-
-  return prom
-
-}
 
 
 
@@ -231,32 +202,12 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
 
 <template>
   <div class="container py-1 px-3 mx-auto">
-    <nav class="row navbar bg-body-tertiary mb-3">
+    <nav class="row navbar bg-body-tertiary mb-2">
       <div class="container-fluid">
         <span class="navbar-brand mb-0 h1">La Rampa</span>
         <DropPanel @files-dropped="processUploadFiles" />
       </div>
     </nav>
-    <form class="row mb-3 g-2">
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Start %</span>
-          <input type="text" class="form-control smallfont" v-model="startGradient">
-        </div>
-      </div>
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Stop %</span>
-          <input type="text" class="form-control smallfont" v-model="stopGradient">
-        </div>
-      </div>
-      <div class="col">
-        <div class="input-group">
-          <span class="input-group-text smallfont">Window</span>
-          <input type="text" class="form-control smallfont" v-model="windowSizeMeters">
-        </div>
-      </div>
-    </form>
     <DropField @files-dropped="processUploadFiles">
       <div class="row border py-3">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
@@ -292,6 +243,26 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
         </tbody>
       </table>
     </div>
+    <form class="row mb-3 g-2">
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text smallfont">Start %</span>
+          <input type="text" class="form-control smallfont" v-model="startGradient">
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text smallfont">Stop %</span>
+          <input type="text" class="form-control smallfont" v-model="stopGradient">
+        </div>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text smallfont">Window</span>
+          <input type="text" class="form-control smallfont" v-model="windowSizeMeters">
+        </div>
+      </div>
+    </form>
   </div> <!-- Container -->
 </template>
 

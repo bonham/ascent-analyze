@@ -29,10 +29,20 @@ export function analyzeAscent(
     const thisPoint = seg[idx]
     const elevationDelta = thisPoint.elevation - lastPoint.elevation
 
+    // hill has not started yet, check if it starts here
     if (!hillStarted) {
       if (elevationDelta >= startTrigger) {
         hillStarted = true
-        hillStartIdx = windowStartIdx
+
+        // we need to search for the point with the lowest elevation in the window
+        const pointsInInterval = seg.slice(windowStartIdx, idx + 1)
+        const indexMinElevationOfSlice = pointsInInterval.reduce(
+          (indexMin, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation < pointsInInterv[indexMin].elevation ? currentIndex : indexMin,
+          0
+        )
+        // calculate back from slicing
+        const indexMinElevation = indexMinElevationOfSlice + windowStartIdx
+        hillStartIdx = indexMinElevation
       }
       // hill has started , check when it ends, and where
     } else if (elevationDelta <= stopTrigger) {
