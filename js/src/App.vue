@@ -73,6 +73,18 @@ const zoomManager = computed(() => new ZoomManager(trackSegmentIndexed.value))
 const slopeIntervals = computed<[number, number][]>(() =>
   analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold_m.value, stopThreshold_m.value, windowSizePoints.value)
 )
+const tableHighlightIndex = computed(() => {
+  if (elevationChartMouseXValue.value === null) {
+    return null
+  } else {
+    // find interval containing this index
+    const idx = slopeIntervals.value.findIndex((intv) =>
+      (elevationChartMouseXValue.value !== null) && (elevationChartMouseXValue.value >= intv[0]) && (elevationChartMouseXValue.value <= intv[1])
+    )
+    const returnIndex = idx >= 0 ? idx + 1 : null // return interval id (1-based)
+    return returnIndex
+  }
+})
 
 const intervalDetails = computed(() => {
   return slopeIntervals.value.map((intv, idx) => {
@@ -148,6 +160,8 @@ function updateElevationChart(newTrack: TrackSegmentIndexed) {
   elevationChartSegment.value = newTrack
 }
 
+/********************** Event handling  **************************************/
+
 /**
  * Handles event from elevation chart component
  * 
@@ -172,6 +186,8 @@ function handleZoomEvent(xValue: number, deltaY: number) {
   //console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
+
+/********************** File handling  **************************************/
 
 async function processUploadFiles(files: FileList) {
   zoomMapOnUpdate.value = true
@@ -265,7 +281,8 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in intervalDetails" :key="item.id">
+          <tr v-for="item in intervalDetails" :key="item.id"
+            :class="{ 'table-warning': item.id === tableHighlightIndex }">
             <td>{{ item.id }}</td>
             <td>{{ item.start_distance_m / 1000 }}</td>
             <td>{{ item.interval_size_m / 1000 }}</td>
