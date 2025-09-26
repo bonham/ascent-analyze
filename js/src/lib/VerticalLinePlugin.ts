@@ -38,20 +38,44 @@ function createVerticalLinePlugin() {
 
       const canvas = chart.canvas
 
-      // Track mouse position relative to canvas
-      canvas.addEventListener('pointermove', (event) => {
+      canvas.addEventListener('mouseenter', (event) => { // pointermove did not work on iphone
+        chart.render(); // to clear any existing line
         const rect = canvas.getBoundingClientRect();
         verticalLinePlugin.mouseX = event.clientX - rect.left;
-        chart.draw(); // Trigger redraw. Clear the line
       });
 
-      canvas.addEventListener('pointerleave', () => {
-        verticalLinePlugin.mouseX = null;
-        chart.draw(); // Clear the line
+      canvas.addEventListener('touchstart', (event) => {
+        chart.render(); // to clear any existing line
+        const rect = canvas.getBoundingClientRect();
+        if (event.touches.length === 0) return;
+        if (event.touches.length > 1) return; // only single touch
+        const client = event.touches[0];
+        verticalLinePlugin.mouseX = client.clientX - rect.left;
+        //chart.draw(); // Trigger redraw. Clear the line
       });
-      canvas.addEventListener('pointerup', () => {
-        verticalLinePlugin.mouseX = null;
-        chart.draw(); // Clear the line
+
+      // Track mouse position relative to canvas
+      canvas.addEventListener('mousemove', (event) => { // pointermove did not work on iphone
+        const rect = canvas.getBoundingClientRect();
+        verticalLinePlugin.mouseX = event.clientX - rect.left;
+      });
+
+      canvas.addEventListener('touchmove', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        if (event.touches.length === 0) return;
+        if (event.touches.length > 1) return; // only single touch
+        const client = event.touches[0];
+        verticalLinePlugin.mouseX = client.clientX - rect.left;
+      });
+
+
+      canvas.addEventListener('mouseleave', () => {
+        //        verticalLinePlugin.mouseX = null;
+        //chart.draw(); // Clear the line
+      });
+      canvas.addEventListener('touchend', () => {
+        //  verticalLinePlugin.mouseX = null;
+        //chart.draw(); // Clear the line
       });
     },
 

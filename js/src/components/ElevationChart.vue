@@ -224,12 +224,24 @@ onMounted(() => {
 
 
     // Add event listener for highlighting points
-    canvas.addEventListener('pointermove', (event) => {
-      handlePointerEvent(canvas, event)
+    canvas.addEventListener('mousemove', (event) => {
+      event.stopPropagation()
+      const clientX = event.clientX
+      emitXPosition(canvas, clientX)
     })
 
-    canvas.addEventListener('pointerdown', (event) => {
-      handlePointerEvent(canvas, event)
+    canvas.addEventListener('touchmove', (event) => {
+      if (event.touches.length === 0) return;
+      if (event.touches.length > 1) return; // only single touch
+      const client = event.touches[0];
+      emitXPosition(canvas, client.clientX)
+    })
+
+    canvas.addEventListener('touchstart', (event) => {
+      if (event.touches.length === 0) return;
+      if (event.touches.length > 1) return; // only single touch
+      const client = event.touches[0];
+      emitXPosition(canvas, client.clientX)
     })
 
     canvas.addEventListener('wheel', (event) => {
@@ -254,12 +266,11 @@ onMounted(() => {
 
   }
 
-  function handlePointerEvent(canvas: HTMLCanvasElement, event: PointerEvent) {
-    event.preventDefault()
-    // event.stopPropagation() do we need this?
+  function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
+
     // Get mouse position relative to canvas
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
+    const x = clientX - rect.left;
     const xValueVirtual = eventX2VirtualX(x)
     if (xValueVirtual !== undefined) {
       // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
@@ -287,6 +298,7 @@ onMounted(() => {
     () => props.cursorIndex,
     (newIndex) => {
       //console.log("New index: ", newIndex)
+      // does not work      if (chartInstance !== null) { chartInstance.clear(); chartInstance.render() } // to clear any existing line
       if (newIndex === null) return
       if (chartInstance &&
         chartInstance.data.labels &&
@@ -300,9 +312,12 @@ onMounted(() => {
         //console.log("Pixel X", pixelX)
         //        const pluginInstance = Chart.registry.plugins.get('verticalLinePlugin');
         const pluginInstance = verticalLinePlugin;
-        if (pluginInstance !== undefined) {
-          chartInstance.draw();
-          (pluginInstance as VerticalLinePlugin)._draw(chartInstance, pixelX);
+        if (pluginInstance !== undefined
+          && pluginInstance !== null
+        ) {
+          const vlp = pluginInstance as VerticalLinePlugin;
+          vlp.mouseX = pixelX;
+          chartInstance.update('none'); // to avoid animation
         }
       }
     }

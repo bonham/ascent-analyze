@@ -15,7 +15,7 @@ export default defineConfig({
   ],
   server: {
     port: 4000,
-    host: "elchdesk.fritz.box"
+    host: true
   },
   resolve: {
     alias: {
