@@ -224,6 +224,7 @@ onMounted(() => {
 
 
     // Add event listener for highlighting points
+    // Reminder: touchmove does not work in iphone - getting lags
     canvas.addEventListener('mousemove', (event) => {
       event.stopPropagation()
       const clientX = event.clientX
