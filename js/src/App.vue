@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MapView from '@/components/MapView.vue';
 import ElevationChart from '@/components/ElevationChart.vue';
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
@@ -101,38 +101,23 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
 })
 
 
-// Interpolated full segment after initial load
-let zoomQueue: ZoomEventQueue
-
-onMounted(async () => {
-
-  // loading the data should be done after mounted and all child components are ready ( chart, map )
-
-  // Load the track data when the component is mounted
-  try {
-    featureCollection.value = await loadGeoJson()
-    zoomMapOnUpdate.value = true
-    elevationChartSegment.value = trackSegmentIndexed.value
-
-  } catch (e) {
-    console.error('Failed to load track data:', e);
-    return
-  }
-
-  zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-    const newSegment = zoomManager.value.applyFactorInternal(centerIndex, factor)
-    zoomMapOnUpdate.value = false
-    updateElevationChart(newSegment)
-  })
-
-
+const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
+  const newSegment = zoomManager.value.applyFactorInternal(centerIndex, factor)
+  zoomMapOnUpdate.value = false
+  updateElevationChart(newSegment)
 })
 
-// Load a geojson file
-async function loadGeoJson(): Promise<FeatureCollection<LineString>> {
+
+initialLoad().catch((err) => {
+  console.error("Error in initial load:", err)
+})
+
+async function initialLoad(): Promise<void> {
   const response = await fetch('./kl.json');
   const geojson = await response.json();
-  return geojson
+  featureCollection.value = geojson
+  zoomMapOnUpdate.value = true
+  elevationChartSegment.value = trackSegmentIndexed.value
 }
 
 
