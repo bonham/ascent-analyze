@@ -43,7 +43,9 @@ export default defineConfig({
         manualChunks: {
           ol: ['ol'],
           vue: ['vue'],
-          'chart.js': ['chart.js']
+          'chart.js': ['chart.js'],
+          '@garmin/fitsdk': ['@garmin/fitsdk'],
+          readDroppedFile: ['@/lib/fileReader/readDroppedFile'],
         }
       }
     }
