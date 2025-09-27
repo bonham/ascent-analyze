@@ -228,55 +228,49 @@ onMounted(() => {
 
   // -------------------- event listeners
 
+  // Add event listener for highlighting points
+  // Reminder: touchmove does not work in iphone - getting lags
+  canvas.addEventListener('mousemove', (event) => {
+    event.stopPropagation()
+    const clientX = event.clientX
+    emitXPosition(canvas, clientX)
+  })
 
-  if (chartInstance === null || !chartInstance) {
-    console.warn('⛔ Chart instance is not initialized. Cannot add event listener');
-  } else {
+  canvas.addEventListener('touchmove', (event) => {
+    if (event.touches.length === 0) return;
+    if (event.touches.length > 1) return; // only single touch
+    const client = event.touches[0];
+    emitXPosition(canvas, client.clientX)
+  })
+
+  canvas.addEventListener('touchstart', (event) => {
+    if (event.touches.length === 0) return;
+    if (event.touches.length > 1) return; // only single touch
+    const client = event.touches[0];
+    emitXPosition(canvas, client.clientX)
+  })
+
+  canvas.addEventListener('wheel', (event) => {
+    // Get mouse position relative to canvas
+    event.stopPropagation()
+    event.preventDefault()
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+
+    // Convert pixel position to x-axis value using chart scales
+    let xValue: number | undefined;
+    if (chartInstance) {
+      xValue = chartInstance.scales['x'].getValueForPixel(x);
+    }
+    if (xValue === undefined) {
+      console.warn('⛔ Unable to get xValue from pixel position.');
+      return;
+    }
+    emit('zoom', xValue, event.deltaY)
+
+  })
 
 
-    // Add event listener for highlighting points
-    // Reminder: touchmove does not work in iphone - getting lags
-    canvas.addEventListener('mousemove', (event) => {
-      event.stopPropagation()
-      const clientX = event.clientX
-      emitXPosition(canvas, clientX)
-    })
-
-    canvas.addEventListener('touchmove', (event) => {
-      if (event.touches.length === 0) return;
-      if (event.touches.length > 1) return; // only single touch
-      const client = event.touches[0];
-      emitXPosition(canvas, client.clientX)
-    })
-
-    canvas.addEventListener('touchstart', (event) => {
-      if (event.touches.length === 0) return;
-      if (event.touches.length > 1) return; // only single touch
-      const client = event.touches[0];
-      emitXPosition(canvas, client.clientX)
-    })
-
-    canvas.addEventListener('wheel', (event) => {
-      // Get mouse position relative to canvas
-      event.stopPropagation()
-      event.preventDefault()
-      const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-
-      // Convert pixel position to x-axis value using chart scales
-      let xValue: number | undefined;
-      if (chartInstance) {
-        xValue = chartInstance.scales['x'].getValueForPixel(x);
-      }
-      if (xValue === undefined) {
-        console.warn('⛔ Unable to get xValue from pixel position.');
-        return;
-      }
-      emit('zoom', xValue, event.deltaY)
-
-    })
-
-  }
 
   function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
 
