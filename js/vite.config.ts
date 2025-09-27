@@ -19,7 +19,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(projectRootDir, 'src')
+      '@': resolve(projectRootDir, 'src'),
+      '~bootstrap': resolve(__dirname, 'node_modules/bootstrap'),
+      '~bootstrap-icons': resolve(__dirname, 'node_modules/bootstrap-icons')
     }
   },
 
