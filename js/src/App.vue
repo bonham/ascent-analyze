@@ -216,7 +216,7 @@ async function processUploadFiles(files: FileList) {
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackCoords="elevationChartSegment"
+      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackSegmentInd="elevationChartSegment"
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
         :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
     </div>

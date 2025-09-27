@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, watchEffect } from 'vue';
 import Chart from 'chart.js/auto';
 import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackData';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
@@ -14,7 +14,7 @@ import type { VerticalLinePlugin } from '@/lib/VerticalLinePlugin';
 
 // 👇 Define props using defineProps
 const props = defineProps<{
-  trackCoords: TrackSegmentIndexed | null; // TrackSegment with equidistant points
+  trackSegmentInd: TrackSegmentIndexed | null; // TrackSegment with equidistant points
   overlayIntervals: number[][]; // List of x axis index intervals to draw in different color ( virtual index )
   pointDistance: number;
   cursorIndex: number | null; // Vertical line cursor index value
@@ -62,24 +62,49 @@ function genOverlayData(baseData: number[], intervals: number[][]) {
   return resultArray.slice(0, maxEnd + 1)
 }
 
-function updateChart(chartInstance: Chart<'line'>, segmentI: TrackSegmentIndexed) {
+// Trigger chart update when trackSegmentInd or overlayIntervals change
+watchEffect(
+  async () => {
 
-  const indexList = segmentI.indexList()
-  const myLabels = indexList.map(e => (e * segmentI.pointDistance / 1000).toFixed(1))
+    const newTrackSegmentI = props.trackSegmentInd
+    const overlayIntervals = props.overlayIntervals
+
+    if (newTrackSegmentI === null) {
+      console.log("trackSegmentInd is null, cannot update chart")
+      return
+    }
+
+    if (chartInstance === null) {
+      console.log("chartInstance is null, cannot update chart")
+      return
+    }
+
+    // set basic chart data
+    const { primaryLineData, myLabels } = calcPrimaryChartData(newTrackSegmentI)
+    chartInstance.data.datasets[0].data = primaryLineData
+    chartInstance.data.labels = myLabels
+
+    // set overlay data
+    const overLayIntervalsInternal = intervalsToInternal(newTrackSegmentI, overlayIntervals)
+    const overlayLineData = genOverlayData(primaryLineData, overLayIntervalsInternal)
+    chartInstance.data.datasets[1].data = overlayLineData
+
+    // update overlay intervals
+    triggerChartUpdate(chartInstance)
+  },
+  {
+    flush: 'post'  // to ensure DOM is updated (canvas available)
+  }
+);
+
+function calcPrimaryChartData(segmentI: TrackSegmentIndexed) {
   const segment = segmentI.getSegment()
   const primaryLineData = genData(segment)
 
-  // translate intervals from virtual to internal index
-  const overLayIntervalsInternal = intervalsToInternal(segmentI, props.overlayIntervals)
+  const indexList = segmentI.indexList()
+  const myLabels = indexList.map(e => (e * segmentI.pointDistance / 1000).toFixed(1))
 
-  const overlayLineData = genOverlayData(primaryLineData, overLayIntervalsInternal)
-
-  chartInstance.data.labels = myLabels
-  chartInstance.data.datasets[0].data = primaryLineData
-  chartInstance.data.datasets[1].data = overlayLineData
-
-  type MyUpdateArgType = Parameters<typeof chartInstance.update>[0];
-  chartInstance.update('scroll_update' as MyUpdateArgType);
+  return { primaryLineData, myLabels }
 }
 
 function intervalsToInternal(si: TrackSegmentIndexed, sourceIntervals: number[][]) {
@@ -105,36 +130,22 @@ function intervalsToInternal(si: TrackSegmentIndexed, sourceIntervals: number[][
   return outI
 }
 
-// 🧭 Log whenever trackCoords changes
-watch(
-  () => props.trackCoords,
-  (newTrackSegmentI) => {
-    //console.log('🟦 Track coordinates updated:', newTrackSegment);
-    if (newTrackSegmentI === null) return
-    const newTrackSegment = newTrackSegmentI.getSegment()
-    // Optionally update chart if it already exists
-    if (chartInstance === null) {
-      console.warn("chartInstance is null")
-    } else if (newTrackSegment.length === 0) {
-      console.warn("TrackSegment has null length")
-    } else {
-      updateChart(chartInstance, newTrackSegmentI)
-    }
-  },
-  { immediate: false }
-);
 
-watch(
-  () => props.overlayIntervals, () => chartInstance !== null && props.trackCoords !== null && updateChart(chartInstance, props.trackCoords)
-)
+
+async function triggerChartUpdate(chartInstance: Chart<'line'>) {
+  await new Promise((resolve) => setTimeout(resolve, 150)) // need this, otherwise chart does not update properly on initial page load
+  chartInstance.update('none')
+}
 
 // Plugin to draw vertical line at mouseX
 const verticalLinePlugin = createVerticalLinePlugin()
+
 // Plugin to fill area below chart
 //const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
 
 // 🎨 Initialize chart once on mount
 onMounted(() => {
+
 
   const scales = {
     x: {
@@ -290,7 +301,7 @@ onMounted(() => {
       return;
     }
 
-    const xValueVirtual = props.trackCoords?.toVirtualIndex(xValue);
+    const xValueVirtual = props.trackSegmentInd?.toVirtualIndex(xValue);
     return xValueVirtual;
   }
 
@@ -307,7 +318,7 @@ onMounted(() => {
         chartInstance.config.plugins
       ) {
         // convert cursorIndex ( virtual ) to internal index:
-        const newIndexVirtual = props.trackCoords?.toInternalIndex(newIndex)
+        const newIndexVirtual = props.trackSegmentInd?.toInternalIndex(newIndex)
         if (newIndexVirtual === undefined) return
         const pixelX = chartInstance.scales['x'].getPixelForValue(newIndexVirtual); // e.g. 'March'
         //console.log("Pixel X", pixelX)
