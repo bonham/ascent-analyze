@@ -1,5 +1,5 @@
 <template>
-  <div class="chart-container">
+  <div class="chart-container px-1">
     <canvas ref="canvasRef"></canvas>
   </div>
 </template>
@@ -185,7 +185,7 @@ onMounted(() => {
           //          hidden: true
         },
         {
-          borderColor: 'red',
+          borderColor: '#dc3912',
           data: [],
           fill: false,
           spanGaps: false,

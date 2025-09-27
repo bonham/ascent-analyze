@@ -9,7 +9,7 @@ function getMapElements() {
   /* **** Base Track **** */
   const trackStyle = new Style({
     stroke: new Stroke({
-      color: 'blue',       // Or any CSS color
+      color: '#37a3eb',       // Or any CSS color
       width: 4             // Adjust thickness here
     })
   });
@@ -23,7 +23,7 @@ function getMapElements() {
   /* **** Overlay Track for slopes **** */
   const overlayStyle = new Style({
     stroke: new Stroke({
-      color: 'red',       // Or any CSS color
+      color: '#dc3912',       // Or any CSS color
       width: 3            // Adjust thickness here
     })
   });

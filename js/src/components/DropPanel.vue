@@ -17,12 +17,8 @@ function reEmit(payload: FileList) {
 </script>
 <template>
   <DropField @files-dropped="reEmit">
-    <label for="input" class="border border-1 rounded p-2 d-flex flex-row">
-      <div>
-        Upload
-      </div>
-    </label>
-    <input id="input" type="file" multiple class="hideinput" @change="onChange">
+    <slot for="input"></slot>
+    <input id="input" type="file" class="hideinput" @change="onChange">
   </DropField>
 </template>
 <style scoped>

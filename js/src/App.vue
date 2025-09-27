@@ -219,15 +219,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="container py-1 px-3 mx-auto">
+  <div class="container py-0 px-3 mx-auto">
     <nav class="row navbar bg-body-tertiary mb-2">
       <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1">La Rampa</span>
-        <DropPanel @files-dropped="processUploadFiles" />
+        <span class="fw-bold mb-0">La Rampa</span>
+        <DropPanel @files-dropped="processUploadFiles">
+          <label for="input" class="border border-1 rounded px-2 py-1 d-flex flex-row">
+            <div>
+              Upload
+            </div>
+          </label>
+        </DropPanel>
       </div>
     </nav>
     <DropField @files-dropped="processUploadFiles">
-      <div class="row border py-3">
+      <div class="row border py-1">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
           :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate"
           @hover-index="mapViewMouseIndexValue = $event" />
