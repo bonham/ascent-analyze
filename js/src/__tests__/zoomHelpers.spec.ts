@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { stretchInterval, roundToNextOdd, ZoomManager } from '@/lib/appHelpers';
+import { stretchInterval, ZoomManager } from '@/lib/app/zoomHelpers';
 import type { TrackSegmentWithDistance } from '@/lib/TrackData';
 import { TrackSegmentIndexed } from "@/lib/TrackData"
 
@@ -74,26 +74,6 @@ describe("AppHelpers", () => {
   })
 
 })
-
-describe("Round to next odd 2", () => {
-  test.each([
-    [4, 5],
-    [5, 5],
-    [4.9, 5],
-    [3.9, 3],
-    [4.1, 5],
-    [5.9999, 5],
-    [6, 7],
-    [0.1, 1],
-    [-0.1, -1],
-    [-1, -1],
-    [-1.9, -1],
-    [-2.1, -3],
-    [0, 1],
-  ])("roundUpToNextOdd(%s) should return %s", (input, expected) => {
-    expect(roundToNextOdd(input)).toBe(expected);
-  });
-});
 
 describe("Zoom Manager", () => {
   let track1: TrackSegmentWithDistance

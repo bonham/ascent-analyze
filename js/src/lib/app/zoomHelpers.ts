@@ -1,4 +1,4 @@
-import { TrackSegmentIndexed } from './TrackData'
+import { TrackSegmentIndexed } from '@/lib/TrackData'
 import throttle from 'lodash/throttle'
 const { round, max, min } = Math
 
@@ -165,18 +165,5 @@ function stretchInterval(i_start: number, i_end: number, mid: number, factor: nu
   return { start: new_start, end: new_end };
 }
 
-/**
- * Function which rounds to next odd number
- *
- * Credits: https://stackoverflow.com/questions/20983241/round-to-nearest-odd-digit#20983242
- * 
- * @param x number
- * @returns next odd integer number
- */
-function roundToNextOdd(x: number) {
-  const r = round((x - 1) / 2) * 2 + 1
-  return r
-}
-
-export { roundToNextOdd, ZoomManager, ZoomEventQueue, stretchInterval }
+export { ZoomManager, ZoomEventQueue, stretchInterval }
 

@@ -6,7 +6,7 @@ import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
 import type { FeatureCollection, Feature, MultiLineString } from 'geojson';
-import { ZoomEventQueue, ZoomManager } from '@/lib/appHelpers';
+import { ZoomEventQueue, ZoomManager } from '@/lib/app/zoomHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
@@ -86,6 +86,9 @@ const tableHighlightIndex = computed(() => {
   }
 })
 
+/**
+ * Details of slope intervals for table display
+ */
 const intervalDetails = computed(() => {
   return slopeIntervals.value.map((intv, idx) => {
     const start = trackSegmentIndexed.value.get(intv[0])
@@ -105,7 +108,9 @@ const intervalDetails = computed(() => {
   })
 })
 
-// computed
+/**
+ * Overlay line string feature for showing on map
+ */
 const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
 
   if (lineStringFeature.value === null) {
@@ -131,14 +136,16 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
   }
 })
 
-
+/**
+ * Zoom event queue for handling zoom events from elevation chart
+ */
 const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
   const newSegment = zoomManager.value.applyFactorInternal(centerIndex, factor)
   zoomMapOnUpdate.value = false
   updateElevationChart(newSegment)
 })
 
-
+/** Main trigger */
 initialLoad().catch((err) => {
   console.error("Error in initial load:", err)
 })
