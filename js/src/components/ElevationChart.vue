@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'highlight-xvalue', index: number): void;
   (e: 'zoom', index: number, deltaY: number): void;
+  (e: 'pan', deltaX: number): void;
 }>();
 
 // 👇 Canvas reference
@@ -230,10 +231,46 @@ onMounted(() => {
 
   // Add event listener for highlighting points
   // Reminder: touchmove does not work in iphone - getting lags
+  let isDragging = false
+  let scaleXStart: number | undefined = undefined
+
+  canvas.addEventListener('mousedown', (event) => {
+    isDragging = true
+    scaleXStart = clientX2VirtualX(canvas, event.clientX)
+  })
+
+  canvas.addEventListener('mouseup', () => {
+    isDragging = false
+    scaleXStart = undefined
+  })
+
   canvas.addEventListener('mousemove', (event) => {
-    event.stopPropagation()
-    const clientX = event.clientX
-    emitXPosition(canvas, clientX)
+
+    if (isDragging) {
+      console.log("Dragging - ignoring mousemove")
+      if (chartInstance === null || chartInstance === undefined) return
+
+      const scaleXCurrent = clientX2VirtualX(canvas, event.clientX)
+      console.log("Scale X current", scaleXCurrent)
+      if (scaleXCurrent === undefined) {
+        console.log("Cannot get scaleXCurrent")
+        return
+      }
+      if (scaleXStart === undefined) {
+        console.log("pixelXStart is undefined")
+        return
+      }
+      const deltaX = scaleXCurrent - scaleXStart
+      console.log("Delta X", deltaX)
+      emit('pan', -deltaX) // negative, because moving mouse right means panning left
+
+    } else {
+
+      event.stopPropagation()
+      const clientX = event.clientX
+      emitXPosition(canvas, clientX)
+
+    }
   })
 
   canvas.addEventListener('touchmove', (event) => {
@@ -270,28 +307,25 @@ onMounted(() => {
 
   })
 
-
-
   function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
 
     // Get mouse position relative to canvas
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const xValueVirtual = eventX2VirtualX(x)
+    const xValueVirtual = clientX2VirtualX(canvas, clientX)
     if (xValueVirtual !== undefined) {
       // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
       emit('highlight-xvalue', xValueVirtual);
     }
-
   }
 
-  function eventX2VirtualX(x: number) {
+  function clientX2VirtualX(canvas: HTMLCanvasElement, clientX: number) {
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
     let xValue: number | undefined;
     if (chartInstance) {
       xValue = chartInstance.scales['x'].getValueForPixel(x);
     }
     if (xValue === undefined) {
-      console.warn('⛔ Unable to get xValue from pixel position.');
+      console.warn(`Unable to get xValue from pixel position ${x}`);
       return;
     }
 

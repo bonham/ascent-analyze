@@ -194,6 +194,11 @@ function handleZoomEvent(xValue: number, deltaY: number) {
   zoomQueue.queue(xValue, incrementalZoomFactor)
 }
 
+function handlePanEvent(deltaX: number) {
+  if (deltaX === 0) return
+  const pannedSegment = zoomManager.value.pan(deltaX)
+  updateElevationChart(pannedSegment)
+}
 /********************** File handling  **************************************/
 
 async function processUploadFiles(files: FileList) {
@@ -249,7 +254,7 @@ onUnmounted(() => {
     <div class="row my-3 py-3 border">
       <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackSegmentInd="elevationChartSegment"
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
-        :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" />
+        :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" @pan="handlePanEvent" />
     </div>
     <div class="row my-3">
       <table class="table table-sm table-bordered smallfont">

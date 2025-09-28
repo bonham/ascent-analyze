@@ -2,8 +2,11 @@ import { TrackSegmentIndexed } from '@/lib/TrackData'
 import throttle from 'lodash/throttle'
 const { round, max, min } = Math
 
+type ZoomFunction = (centerIndex: number, factor: number) => void
+
 /**
- * Starting from initial full  segment this class applies zoom factors to existing state.
+ * Holds the initial segment and a current projection of that.
+ * Further transformations can be applied to current segment, like zooming and panning. 
  */
 class ZoomManager {
   fullSegment: TrackSegmentIndexed
@@ -14,10 +17,6 @@ class ZoomManager {
     this.fullSegment = fullSegment
     this.currentSegment = fullSegment
   }
-
-  // currentFactor() {
-  //   return this.currentZoomFactor
-  // }
 
   /**
    * Returns zoomed indexed segment
@@ -50,6 +49,31 @@ class ZoomManager {
     const virtualIdx = this.currentSegment.toVirtualIndex(internalCenterIndex)
     return this.applyFactor(virtualIdx, factor)
   }
+
+
+  pan(delta: number) {
+    const curSeg = this.currentSegment
+    const fullSeg = this.fullSegment
+    const I_min = fullSeg.minIndex()
+    const I_max = fullSeg.maxIndex()
+    const current_start = curSeg.minIndex()
+    const current_end = curSeg.maxIndex()
+    let newStart = current_start + delta
+    let newEnd = current_end + delta
+    // check boundaries
+    if (newStart < I_min) {
+      newStart = I_min
+      newEnd = newStart + (current_end - current_start)
+    }
+    if (newEnd > I_max) {
+      newEnd = I_max
+      newStart = newEnd - (current_end - current_start)
+    }
+    const pannedSegment = fullSeg.slice(newStart, newEnd + 1) // from full segment
+    this.currentSegment = pannedSegment
+    return pannedSegment
+  }
+
   /**
    * Returns initial segment
    */
@@ -59,8 +83,6 @@ class ZoomManager {
     return this.fullSegment
   }
 }
-
-type ZoomFunction = (centerIndex: number, factor: number) => void
 
 /**
  * Serializing and throttling of zoom commands coming from mousewheel
