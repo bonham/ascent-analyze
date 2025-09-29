@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { stretchInterval, ZoomManager } from '@/lib/app/zoomHelpers';
+import { stretchInterval, SegmentTransformManager } from '@/lib/app/transformHelpers';
 import type { TrackSegmentWithDistance } from '@/lib/TrackData';
 import { TrackSegmentIndexed } from "@/lib/TrackData"
 
@@ -97,14 +97,14 @@ describe("Zoom Manager", () => {
 
 
   test("Factor 1 yields same", () => {
-    const zm = new ZoomManager(tsi)
+    const zm = new SegmentTransformManager(tsi)
     const zoomedSegment = zm.applyFactor(3, 1)
     expect(zoomedSegment.length()).toEqual(10)
     expect(zoomedSegment.getSegment()).toEqual(track1)
   })
 
   test("Other center", () => {
-    const zm = new ZoomManager(tsi)
+    const zm = new SegmentTransformManager(tsi)
     const zoomedSegment = zm.applyFactor(5, 1)
     expect(zoomedSegment.length()).toEqual(10)
     expect(zoomedSegment.getSegment()).toEqual(track1)

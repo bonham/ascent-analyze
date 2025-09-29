@@ -3,12 +3,13 @@ import throttle from 'lodash/throttle'
 const { round, max, min } = Math
 
 type ZoomFunction = (centerIndex: number, factor: number) => void
+type PanFunction = (panDelta: number) => void
 
 /**
  * Holds the initial segment and a current projection of that.
  * Further transformations can be applied to current segment, like zooming and panning. 
  */
-class ZoomManager {
+class SegmentTransformManager {
   fullSegment: TrackSegmentIndexed
   currentSegment: TrackSegmentIndexed
   MIN_INTERVAL_LENGTH = 20
@@ -36,9 +37,7 @@ class ZoomManager {
     const I_max = fullSeg.maxIndex()
     const current_start = curSeg.minIndex()
     const current_end = curSeg.maxIndex()
-
     const { start: newStart, end: newEnd } = stretchInterval(current_start, current_end, virtualCenterIndex, factor, I_min, I_max, this.MIN_INTERVAL_LENGTH)
-
     const zoomedIndexedSegment = fullSeg.slice(newStart, newEnd + 1) // from full segment
     this.currentSegment = zoomedIndexedSegment
     // console.log("Zoomed Segment:", zoomedIndexedSegment)
@@ -113,7 +112,7 @@ class ZoomEventQueue {
 
     // Create throttled function which is only executed from time to time. 
     // if it is executed then it will set accumulatedZoomFactor to null - indicating all buffered events have been handled
-    this.throttledHandleZoom = throttle(handleZoomBatched, THROTTLE_INTERVAL, { leading: true, trailing: true })
+    this.throttledHandleZoom = throttle(handleZoomBatched, THROTTLE_INTERVAL, { leading: false, trailing: true })
   }
   /**
    * Queues a zoom command
@@ -133,9 +132,59 @@ class ZoomEventQueue {
       this.accumulatedZoomFactor *= factor
 
     }
-
+    console.log("Queue: CenterIndex", centerIndex, "Accumulated zoom factor:", this.accumulatedZoomFactor)
     // call the throttled handlezoom - it is possible that it is not called immediately , but later
     this.throttledHandleZoom(centerIndex, this.accumulatedZoomFactor)
+  }
+}
+
+class PanEventQueue {
+
+  panFunction: PanFunction
+  throttledHandlePan: PanFunction
+
+  accumulatedPanDelta: number | null = null
+
+  /**
+   * 
+   * @param panFunction Function which takes internal index and pan factor as arguments
+   */
+  constructor(panFunction: PanFunction) {
+    this.panFunction = panFunction
+
+    // craft and store new wrapped function of the provided function
+    const handlePanBatched = (delta: number) => {
+      this.panFunction(delta)
+      // reset this to null to indicate paning was performed 
+      this.accumulatedPanDelta = null
+
+    }
+
+    // Create throttled function which is only executed from time to time. 
+    // if it is executed then it will set accumulatedpandelta to null - indicating all buffered events have been handled
+    this.throttledHandlePan = throttle(handlePanBatched, THROTTLE_INTERVAL, { leading: true, trailing: true })
+  }
+  /**
+   * Queues a pan command
+   * @param centerIndex Internal index ( mouse position in elevation chart )
+   * @param delta pan delta
+   */
+  queue(delta: number) {
+
+    if (this.accumulatedPanDelta === null) {
+
+      // Status after the queue was run
+      this.accumulatedPanDelta = delta
+
+    } else {
+
+      // accumulated delta already there -> reapply delta
+      this.accumulatedPanDelta += delta
+
+    }
+
+    // call the throttled handlepan - it is possible that it is not called immediately , but later
+    this.throttledHandlePan(delta)
   }
 }
 
@@ -187,5 +236,5 @@ function stretchInterval(i_start: number, i_end: number, mid: number, factor: nu
   return { start: new_start, end: new_end };
 }
 
-export { ZoomManager, ZoomEventQueue, stretchInterval }
+export { SegmentTransformManager, ZoomEventQueue, PanEventQueue, stretchInterval }
 

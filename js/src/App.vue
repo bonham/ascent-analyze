@@ -6,7 +6,7 @@ import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
 import type { FeatureCollection, Feature, MultiLineString } from 'geojson';
-import { ZoomEventQueue, ZoomManager } from '@/lib/app/zoomHelpers';
+import { PanEventQueue, ZoomEventQueue, SegmentTransformManager } from '@/lib/app/transformHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
@@ -67,7 +67,7 @@ const lineStringFeature = computed(() => {
 })
 
 // computed
-const zoomManager = computed(() => new ZoomManager(trackSegmentIndexed.value))
+const segmentTransformationManager = computed(() => new SegmentTransformManager(trackSegmentIndexed.value))
 
 // computed
 const slopeIntervals = computed<[number, number][]>(() =>
@@ -140,7 +140,14 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
  * Zoom event queue for handling zoom events from elevation chart
  */
 const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-  const newSegment = zoomManager.value.applyFactorInternal(centerIndex, factor)
+  const newSegment = segmentTransformationManager.value.applyFactorInternal(centerIndex, factor)
+  zoomMapOnUpdate.value = false
+  console.log("Queue func seg min max internalcenter", newSegment.minIndex(), newSegment.maxIndex(), centerIndex)
+  updateElevationChart(newSegment)
+})
+
+const panQueue = new PanEventQueue((panDelta) => {
+  const newSegment = segmentTransformationManager.value.pan(panDelta)
   zoomMapOnUpdate.value = false
   updateElevationChart(newSegment)
 })
@@ -195,9 +202,8 @@ function handleZoomEvent(xValue: number, deltaY: number) {
 }
 
 function handlePanEvent(deltaX: number) {
-  if (deltaX === 0) return
-  const pannedSegment = zoomManager.value.pan(deltaX)
-  updateElevationChart(pannedSegment)
+  if (panQueue === undefined) return
+  panQueue.queue(deltaX)
 }
 /********************** File handling  **************************************/
 
