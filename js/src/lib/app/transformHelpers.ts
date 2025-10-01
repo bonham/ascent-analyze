@@ -90,7 +90,7 @@ const THROTTLE_INTERVAL = 100 // miliseconds
 class ZoomEventQueue {
 
   zoomFunction: ZoomFunction
-  throttledHandleZoom: ZoomFunction
+  throttledHandleZoom: (center: number, factor: number) => void
 
   accumulatedZoomFactor: number | null = null
 
