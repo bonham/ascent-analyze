@@ -6,7 +6,6 @@ import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
 import type { FeatureCollection, Feature, MultiLineString } from 'geojson';
-import { PanEventQueue, ZoomEventQueue, SegmentTransformManager } from '@/lib/app/transformHelpers';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
@@ -67,7 +66,7 @@ const lineStringFeature = computed(() => {
 })
 
 // computed
-const segmentTransformationManager = computed(() => new SegmentTransformManager(trackSegmentIndexed.value))
+// const segmentTransformationManager = computed(() => new SegmentTransformManager(trackSegmentIndexed.value))
 
 // computed
 const slopeIntervals = computed<[number, number][]>(() =>
@@ -139,18 +138,18 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
 /**
  * Zoom event queue for handling zoom events from elevation chart
  */
-const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-  const newSegment = segmentTransformationManager.value.applyFactorInternal(centerIndex, factor)
-  zoomMapOnUpdate.value = false
-  console.log("Queue func seg min max internalcenter", newSegment.minIndex(), newSegment.maxIndex(), centerIndex)
-  updateElevationChart(newSegment)
-})
+// const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
+//   const newSegment = segmentTransformationManager.value.applyFactorInternal(centerIndex, factor)
+//   zoomMapOnUpdate.value = false
+//   console.log("Queue func seg min max internalcenter", newSegment.minIndex(), newSegment.maxIndex(), centerIndex)
+//   updateElevationChart(newSegment)
+// })
 
-const panQueue = new PanEventQueue((panDelta) => {
-  const newSegment = segmentTransformationManager.value.pan(panDelta)
-  zoomMapOnUpdate.value = false
-  updateElevationChart(newSegment)
-})
+// const panQueue = new PanEventQueue((panDelta) => {
+//   const newSegment = segmentTransformationManager.value.pan(panDelta)
+//   zoomMapOnUpdate.value = false
+//   updateElevationChart(newSegment)
+// })
 
 /** Main trigger */
 initialLoad().catch((err) => {
@@ -170,9 +169,9 @@ async function initialLoad(): Promise<void> {
  * Updates Elevation Chart
  * @param newTrack New indexed track to use for updating 
  */
-function updateElevationChart(newTrack: TrackSegmentIndexed) {
-  elevationChartSegment.value = newTrack
-}
+// function updateElevationChart(newTrack: TrackSegmentIndexed) {
+//   elevationChartSegment.value = newTrack
+// }
 
 /********************** Event handling  **************************************/
 
@@ -182,29 +181,29 @@ function updateElevationChart(newTrack: TrackSegmentIndexed) {
  * @param xValue index number of mouse position in chart
  * @param deltaY mouse wheel scroll value
  */
-function handleZoomEvent(xValue: number, deltaY: number) {
+// function handleZoomEvent(xValue: number, deltaY: number) {
 
-  if (zoomQueue === undefined) return
+//   if (zoomQueue === undefined) return
 
-  const ZOOMIN_INCREMENT_FACTOR = 0.7
-  const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
-  let incrementalZoomFactor: number
+//   const ZOOMIN_INCREMENT_FACTOR = 0.7
+//   const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
+//   let incrementalZoomFactor: number
 
-  if (deltaY > 0) {
-    // zoom out
-    incrementalZoomFactor = Math.abs(deltaY) / (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM)
-  } else {
-    // zoom in
-    incrementalZoomFactor = (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM) / Math.abs(deltaY)
-  }
-  //console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
-  zoomQueue.queue(xValue, incrementalZoomFactor)
-}
+//   if (deltaY > 0) {
+//     // zoom out
+//     incrementalZoomFactor = Math.abs(deltaY) / (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM)
+//   } else {
+//     // zoom in
+//     incrementalZoomFactor = (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM) / Math.abs(deltaY)
+//   }
+//   //console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
+//   zoomQueue.queue(xValue, incrementalZoomFactor)
+// }
 
-function handlePanEvent(deltaX: number) {
-  if (panQueue === undefined) return
-  panQueue.queue(deltaX)
-}
+// function handlePanEvent(deltaX: number) {
+//   if (panQueue === undefined) return
+//   panQueue.queue(deltaX)
+// }
 /********************** File handling  **************************************/
 
 async function processUploadFiles(files: FileList) {
@@ -258,9 +257,9 @@ onUnmounted(() => {
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue" :trackSegmentInd="elevationChartSegment"
+      <ElevationChart :cursor-index="mapViewMouseIndexValue" :full-segment="elevationChartSegment"
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
-        :point-distance=POINT_DISTANCE @zoom="handleZoomEvent" @pan="handlePanEvent" />
+        :point-distance=POINT_DISTANCE />
     </div>
     <div class="row my-3">
       <table class="table table-sm table-bordered smallfont">
