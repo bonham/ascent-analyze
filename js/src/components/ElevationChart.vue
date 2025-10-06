@@ -12,6 +12,7 @@ import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackD
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 import { stretchInterval } from '@/lib/app/transformHelpers';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
+import { ZoomState } from '@/lib/elevationChart/ZoomState';
 
 // 👇 Define props using defineProps
 const props = defineProps<{
@@ -322,44 +323,33 @@ onMounted(() => {
     emitXPosition(canvas, client.clientX)
   })
 
+
+
+  /********************    Zoom handling   ****************************************** */
+
+  const zoomState = new ZoomState(0.001)
+
   canvas.addEventListener('wheel', (event) => {
     // Get mouse position relative to canvas
-    //event.stopPropagation()
+    const rect = canvas.getBoundingClientRect();
+    const canvasPixelX = event.clientX - rect.left; // X mouse position relative to canvas
+
     event.preventDefault()
-    handleWheel(event)
 
-  })
+    // add the delta regardless if zoom is in progress or not.
+    zoomState.bufferTransformation(event.deltaY, canvasPixelX)
 
-  let zoomInProgress = false
-  let accumulatedDelta = 0;
-
-  /**
-   * Depends on
-   * - event ( function param )
-   * 
-   * Depends on globals
-   * - accumulatedDelta
-   * - zoomInProgress
-   * 
-   * Uses functions
-   * - processZoom
-   * 
-   * @param event 
-   */
-  function handleWheel(event: WheelEvent) {
-    event.preventDefault();
-    accumulatedDelta += event.deltaY;
-    console.log(`Accumulated delta: ${accumulatedDelta}`)
+    console.log(`Accumulated delta: ${zoomState.accumulatedDelta()}`)
 
     // Schedule a frame if not already zooming
-    if (!zoomInProgress) {
-      requestAnimationFrame(() => processZoom(event));
+    if (!zoomState.zoomInProgress()) {
+      requestAnimationFrame(
+        () => processZoom(zoomState)
+      );
     } else {
       console.log("Zoom is in progress doing nothing")
     }
-  }
-
-  let overallZoomFactor = 1
+  })
 
   /**
    * Depends on param event
@@ -369,9 +359,7 @@ onMounted(() => {
    * - baseInterval
    * 
    * Depends on globals
-   * - accumulatedDelta
-   * - zoomInProgress
-   * - overallZoomFactor
+   * - zoomState
    * - chartInstance
    * - canvas
    * 
@@ -380,45 +368,46 @@ onMounted(() => {
    * 
    * @param event 
    */
-  function processZoom(event: WheelEvent) {
+  function processZoom(zoomState: ZoomState) {
 
-    if (zoomInProgress) {
+    if (zoomState.zoomInProgress()) {
       console.log("Zoom in progress")
       return
     };
-    if (accumulatedDelta === 0) {
+    if (zoomState.accumulatedDelta() === 0) {
       console.log("Nothing accumulated")
       return
     };
 
-    if (canvas === null) {
-      console.log("Canv null"); return
+    if (viewPortRef.value === null) {
+      console.log("VP null"); return
     }
 
-    if (viewPortRef.value === null) { console.log("VP null"); return }
+    /** make sure you finish zoom when returning */
+    zoomState.startZoomProgress()
+    const zoomFactor = zoomState.zoomFactor()
+    console.log("Zoomfactor:", zoomFactor)
 
-    zoomInProgress = true;
-    const delta = accumulatedDelta;
-    accumulatedDelta = 0;
+    const canvasPixelX = zoomState.mousePositionForZoom()
+    if (canvasPixelX === undefined) {
+      console.error("Mouse pos for zoom not defined yet")
+      zoomState.zoomFinished()
+      return
+    }
 
-    /* -------------get x chart position --------------- */
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
 
     // Convert pixel position to x-axis value using chart scales
     let xValue: number | undefined;
     if (chartInstance) {
-      xValue = chartInstance.scales['x'].getValueForPixel(x);
+      xValue = chartInstance.scales['x'].getValueForPixel(canvasPixelX);
     }
     if (xValue === undefined) {
       console.warn('Unable to get xValue from pixel position.');
+      zoomState.zoomFinished()
       return;
     }
 
     /* -------------chart update --------------- */
-    const zoomFactor = Math.min(1, Math.exp(delta * 0.001) * overallZoomFactor); // tweak sensitivity
-    overallZoomFactor = zoomFactor
-    console.log("Zoomfactor:", zoomFactor)
     if (baseInterval.value === null) { console.log("base int null"); }
     else {
       const stretched = stretchInterval(
@@ -439,18 +428,20 @@ onMounted(() => {
     else {
       console.warn("Chart instance null during zoom")
     }
-    zoomInProgress = false; // clear state
+
+    // work is done
+    zoomState.zoomFinished(); // clear state
     /* ----------------------------------------*/
 
     // If more scroll happened during zoom, schedule another frame - can this happen?
-    if (accumulatedDelta !== 0) {
+    if (zoomState.accumulatedDelta() !== 0) {
       console.log("Catching up")
-      requestAnimationFrame(() => processZoom(event));
+      requestAnimationFrame(() => processZoom(zoomState));
     }
 
   }
 
-
+  /********************************************************************************** */
 
   function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
 
