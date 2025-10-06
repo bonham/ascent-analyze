@@ -59,6 +59,18 @@ let chartInstance: Chart<'line'> | null = null; // Chart instance holder
 
 
 // Trigger chart update when trackSegmentInd or overlayIntervals change
+/** 
+ * Depends on reactive variables:
+ * 
+ * - props.overlayIntervals
+ * - elevationData
+ * - viewPortRef
+ * 
+ * Also needs these global vars
+ * 
+ * - chartInstance
+ * 
+ */
 watchEffect(
   async () => {
 
@@ -315,25 +327,25 @@ onMounted(() => {
     //event.stopPropagation()
     event.preventDefault()
     handleWheel(event)
-    // const rect = canvas.getBoundingClientRect();
-    // const x = event.clientX - rect.left;
-
-    // // Convert pixel position to x-axis value using chart scales
-    // let xValue: number | undefined;
-    // if (chartInstance) {
-    //   xValue = chartInstance.scales['x'].getValueForPixel(x);
-    // }
-    // if (xValue === undefined) {
-    //   console.warn('⛔ Unable to get xValue from pixel position.');
-    //   return;
-    // }
-    // // emit('zoom', xValue, event.deltaY)
 
   })
 
   let zoomInProgress = false
   let accumulatedDelta = 0;
 
+  /**
+   * Depends on
+   * - event ( function param )
+   * 
+   * Depends on globals
+   * - accumulatedDelta
+   * - zoomInProgress
+   * 
+   * Uses functions
+   * - processZoom
+   * 
+   * @param event 
+   */
   function handleWheel(event: WheelEvent) {
     event.preventDefault();
     accumulatedDelta += event.deltaY;
@@ -349,6 +361,25 @@ onMounted(() => {
 
   let overallZoomFactor = 1
 
+  /**
+   * Depends on param event
+   * 
+   * Depends on reactive vars
+   * - viewPortRef
+   * - baseInterval
+   * 
+   * Depends on globals
+   * - accumulatedDelta
+   * - zoomInProgress
+   * - overallZoomFactor
+   * - chartInstance
+   * - canvas
+   * 
+   * Uses functions
+   * - stretchInterval
+   * 
+   * @param event 
+   */
   function processZoom(event: WheelEvent) {
 
     if (zoomInProgress) {
