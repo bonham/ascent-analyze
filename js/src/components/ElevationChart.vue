@@ -103,7 +103,7 @@ watchEffect(
     }
 
     // update overlay intervals
-    triggerChartUpdate(chartInstance)
+    requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
   },
   {
     flush: 'post'  // to ensure DOM is updated (canvas available)
@@ -153,16 +153,6 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
   }
   return resultArray.slice(0, maxEnd + 1)
 }
-
-/**
- * @param chartInstance 
- */
-async function triggerChartUpdate(chartInstance: Chart<'line', number[], string>) {
-  // await new Promise((resolve) => setTimeout(resolve, 150)) // need this, otherwise chart does not update properly on initial page load
-  requestAnimationFrame(() =>
-    chartInstance.update('none'))
-}
-
 
 // Plugin to draw vertical line at mouseX
 const verticalLinePlugin = createVerticalLinePlugin()
