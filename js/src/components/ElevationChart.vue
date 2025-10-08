@@ -6,12 +6,17 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch, watchEffect, computed } from 'vue';
-import Chart from 'chart.js/auto';
 import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackData';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 import { ZoomState, type DataInterval } from '@/lib/elevationChart/ZoomState';
+import { wheelEventHandler, calcXPosition, type UpdateCallBack } from '@/lib/elevationChart/eventHandlers';
+import { Chart } from 'chart.js/auto';
+
+type TType = 'line';
+type TLabel = string;
+type TData = number[];
 
 // parameters
 const ZOOM_SENSITIVITY = 0.001
@@ -42,37 +47,27 @@ const baseInterval = computed((): DataInterval | null => {
   }
 })
 
-interface ViewPortInterval {
-  start: number,
-  end: number
-}
-
 const emit = defineEmits<{
   (e: 'highlight-xvalue', index: number): void;
-  (e: 'viewPort', interval: ViewPortInterval): void; // which part of x-axis is visible
+  (e: 'viewPort', interval: DataInterval): void; // which part of x-axis is visible
 }>();
 
 /****** Refs *****/
 const canvasRef = ref<HTMLCanvasElement | null>(null);// 👇 Canvas reference
-const viewPortRef = ref<ViewPortInterval | null>(null)
+const viewPortRef = ref<DataInterval | null>(null)
 
 /***   *****  */
-let chartInstance: Chart<'line'> | null = null; // Chart instance holder
+let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance holder
 
-
-
-// Trigger chart update when trackSegmentInd or overlayIntervals change
 /** 
+ * Trigger chart update when trackSegmentInd or overlayIntervals change
  * Depends on reactive variables:
- * 
  * - props.overlayIntervals
  * - elevationData
  * - viewPortRef
  * 
  * Also needs these global vars
- * 
  * - chartInstance
- * 
  */
 watchEffect(
   async () => {
@@ -162,7 +157,7 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
 /**
  * @param chartInstance 
  */
-async function triggerChartUpdate(chartInstance: Chart<'line'>) {
+async function triggerChartUpdate(chartInstance: Chart<'line', number[], string>) {
   // await new Promise((resolve) => setTimeout(resolve, 150)) // need this, otherwise chart does not update properly on initial page load
   requestAnimationFrame(() =>
     chartInstance.update('none'))
@@ -186,7 +181,7 @@ function getScaleX(min: number | undefined, max: number | undefined) {
   return s
 }
 
-// 🎨 Initialize chart once on mount
+// Initialize chart once on mount
 onMounted(() => {
 
 
@@ -206,8 +201,11 @@ onMounted(() => {
     console.warn('Canvas unavailable after mount.');
     return;
   }
+
+
   chartInstance = new Chart(canvas, {
-    type: 'line',
+
+    type: 'line' as TType,
 
     data: {
       labels: [],
@@ -216,7 +214,7 @@ onMounted(() => {
           //borderColor: '#4abfbf',
           borderColor: '#37a3eb',
           label: 'Elevation (m)',
-          data: [],
+          data: [] as TData,
           fill: false,
           order: 1,
           pointStyle: false
@@ -224,13 +222,12 @@ onMounted(() => {
         },
         {
           borderColor: '#dc3912',
-          data: [],
+          data: [] as TData,
           fill: false,
           spanGaps: false,
           order: 0,
           pointStyle: false
         }
-
       ]
     },
     options: {
@@ -262,6 +259,7 @@ onMounted(() => {
     // plugins: [verticalLinePlugin, ascentFillPlugin]
     plugins: [verticalLinePlugin]
   });
+
 
 
   // -------------------- event listeners
@@ -328,125 +326,48 @@ onMounted(() => {
 
   /********************    Zoom handling   ****************************************** */
 
-  let oldWheelListener: ((event: WheelEvent) => void) | undefined
+  let oldWheelHandler: ((event: WheelEvent) => void) | undefined
 
   watch(baseInterval, (newInterval) => {
 
     if (newInterval !== null) {
 
-      if (oldWheelListener !== undefined) {
-        canvas.removeEventListener('wheel', oldWheelListener)
+      if (oldWheelHandler !== undefined) {
+        canvas.removeEventListener('wheel', oldWheelHandler)
       }
 
       const zoomState = new ZoomState(ZOOM_SENSITIVITY, newInterval)
-      const newWheelListener = (event: WheelEvent) => wheelListener(event, zoomState)
-      canvas.addEventListener('wheel', newWheelListener)
-      oldWheelListener = newWheelListener
+
+
+      /**
+       * Handles mouse wheel events for zooming the chart.
+       * - Calculates the x-axis position of the mouse.
+       * - Calls wheelEventHandler to update the zoom state and chart viewport.
+       * - Prevents default scrolling behavior.
+       */
+      const newWheelHandler = (event: WheelEvent) => {
+
+        event.preventDefault()
+        if (chartInstance === null) throw new Error("chart instance is null while running wheel handler")
+        const xPosition = calcXPosition(event.clientX, chartInstance, canvas.getBoundingClientRect().left)
+        if (xPosition === undefined) { console.log("xPosition undefined in wheel handler"); return }
+
+        const updateChartFn: UpdateCallBack = (obj: DataInterval) => {
+          if (viewPortRef.value !== undefined) {
+            viewPortRef.value = obj
+          }
+        }
+
+        wheelEventHandler(event.deltaY, xPosition, zoomState, updateChartFn)
+
+      }
+      canvas.addEventListener('wheel', newWheelHandler)
+
+      oldWheelHandler = newWheelHandler
     }
   })
 
-  /** 
-   * Depends on
-   * - canvas
-   * - chartInstance
-   */
-  const wheelListener = (event: WheelEvent, zoomState: ZoomState) => {
 
-    // Get mouse position relative to canvas
-    const rect = canvas.getBoundingClientRect();
-    const canvasPixelX = event.clientX - rect.left; // X mouse position relative to canvas
-
-    // Convert pixel position to x-axis value using chart scales
-    let xValue: number | undefined;
-    if (chartInstance) {
-      xValue = chartInstance.scales['x'].getValueForPixel(canvasPixelX);
-      console.log("xValue", xValue)
-    }
-    if (xValue === undefined) {
-      console.warn('Unable to get xValue from pixel position.');
-      zoomState.zoomFinished()
-      return;
-    }
-
-    event.preventDefault()
-
-    // add the delta regardless if zoom is in progress or not.
-    zoomState.zoomTransformation(event.deltaY, xValue)
-
-    // Schedule a frame if not already zooming
-    if (!zoomState.zoomInProgress()) {
-      requestAnimationFrame(
-        () => processZoom(zoomState)
-      );
-    } else {
-      console.log("Zoom is in progress doing nothing")
-    }
-
-  }
-
-  /**
-   * Depends on param event
-   * 
-   * Depends on reactive vars
-   * - viewPortRef
-   * - baseInterval
-   * 
-   * Depends on globals
-   * - zoomState
-   * - chartInstance
-   * - canvas
-   * 
-   * Uses functions
-   * - stretchInterval
-   * 
-   * @param event 
-   */
-  function processZoom(zoomState: ZoomState) {
-
-    if (zoomState.zoomInProgress()) {
-      console.log("Zoom in progress")
-      return
-    };
-    if (zoomState.accumulatedDelta() === 0) {
-      console.log("Nothing accumulated")
-      return
-    };
-
-    if (viewPortRef.value === null) {
-      console.log("VP null"); return
-    }
-
-    // const xValue = zoomState.xPositionForZoom()
-    // if (xValue === undefined) {
-    //   console.error("X position could not be determined")
-    //   zoomState.zoomFinished()
-    //   return
-    // }
-
-    const stretched = zoomState.startZoom()
-
-    /* -------------chart update --------------- */
-
-    viewPortRef.value = {
-      start: stretched.start,
-      end: stretched.end
-    }
-    if (chartInstance !== null) { chartInstance.update('none') }
-    else {
-      console.warn("Chart instance null during zoom")
-    }
-
-    // work is done
-    zoomState.zoomFinished(); // clear state
-    /* ----------------------------------------*/
-
-    // If more scroll happened during zoom, schedule another frame - can this happen?
-    if (zoomState.accumulatedDelta() !== 0) {
-      console.log("Catching up")
-      requestAnimationFrame(() => processZoom(zoomState));
-    }
-
-  }
 
   /********************************************************************************** */
 
@@ -460,6 +381,12 @@ onMounted(() => {
     }
   }
 
+  /**
+   * Converts a clientX pixel position (from mouse or touch event) to the corresponding x-axis value on the Chart.js chart.
+   * @param canvas The canvas element of the chart.
+   * @param clientX The x-coordinate relative to the viewport.
+   * @returns The x-axis value (category index) corresponding to the pixel position, or undefined if not available.
+   */
   function clientXtoChartX(canvas: HTMLCanvasElement, clientX: number) {
     const rect = canvas.getBoundingClientRect();
     const x = clientX - rect.left;

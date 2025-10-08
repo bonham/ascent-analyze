@@ -1,5 +1,10 @@
 import { stretchInterval } from '@/lib/app/transformHelpers';
 
+interface DataInterval {
+  start: number,
+  end: number
+}
+
 const MIN_STRETCH_INTERVAL_LENGTH = 5
 
 
@@ -24,7 +29,7 @@ const MIN_STRETCH_INTERVAL_LENGTH = 5
  *
  * This class is designed to be used in interactive chart components where zooming behavior must be managed and constrained.
  */
-export class ZoomState {
+class ZoomState {
   _zoomInProgress: boolean = false
   _accumulatedDelta: number = 0
 
@@ -74,7 +79,7 @@ export class ZoomState {
 
     this._xPositionForZoom = this._lastxPosition
     if (this._xPositionForZoom === undefined) {
-      console.warn("Mouse position undefined")
+      console.warn("X position undefined")
       return this._currentInterval
     }
 
@@ -119,7 +124,5 @@ export class ZoomState {
   }
 }
 
-export interface DataInterval {
-  start: number,
-  end: number
-}
+
+export { ZoomState, type DataInterval }
