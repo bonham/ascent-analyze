@@ -257,7 +257,8 @@ onUnmounted(() => {
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue" :full-segment="elevationChartSegment"
+      <ElevationChart :cursor-index="mapViewMouseIndexValue"
+        :elevation-data="elevationChartSegment?.getSegment().map((_) => _.elevation) ?? null"
         :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
         :point-distance=POINT_DISTANCE />
     </div>

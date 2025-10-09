@@ -6,7 +6,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch, watchEffect, computed } from 'vue';
-import { TrackSegmentIndexed, type TrackSegmentWithDistance } from '@/lib/TrackData';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
@@ -23,23 +22,14 @@ const ZOOM_SENSITIVITY = 0.001
 
 // 👇 Define props using defineProps
 const props = defineProps<{
-  fullSegment: TrackSegmentIndexed | null; // TrackSegment with equidistant points
+  elevationData: number[] | null;
   overlayIntervals: number[][]; // List of x axis index intervals to draw in different color ( virtual index )
   pointDistance: number;
   cursorIndex: number | null; // Vertical line cursor index value
 }>();
 
-const elevationData = computed(() => {
-  const fseg = props.fullSegment
-  if (fseg === null) { return null }
-  else {
-    const data = genData(fseg.getSegment())
-    return data
-  }
-})
-
 const baseInterval = computed((): DataInterval | null => {
-  const edata = elevationData.value
+  const edata = props.elevationData
   if (edata === null) return null
   else {
     const baseInterval = { start: 0, end: edata.length - 1 }
@@ -75,13 +65,13 @@ watchEffect(
     const overlayIntervals = props.overlayIntervals
 
     // set basic chart data
-    if (elevationData.value === null) {
+    if (props.elevationData === null) {
       console.log("Elevation data is null")
       return
     }
 
     if (viewPortRef.value === null) {// initial
-      viewPortRef.value = { start: 0, end: elevationData.value.length - 1 }
+      viewPortRef.value = { start: 0, end: props.elevationData.length - 1 }
     }
 
     if (chartInstance === null) {
@@ -90,11 +80,11 @@ watchEffect(
     }
 
 
-    chartInstance.data.datasets[0].data = elevationData.value
-    chartInstance.data.labels = calcLabels(elevationData.value.length)
+    chartInstance.data.datasets[0].data = props.elevationData
+    chartInstance.data.labels = calcLabels(props.elevationData.length)
 
     // set overlay data
-    const overlayLineData = genOverlayData(elevationData.value, overlayIntervals)
+    const overlayLineData = genOverlayData(props.elevationData, overlayIntervals)
     chartInstance.data.datasets[1].data = overlayLineData
 
     // calc start and stop index from viewport
@@ -113,15 +103,6 @@ watchEffect(
 function calcLabels(length: number) {
   const myLabels = Array.from({ length }, (_, index) => (index * props.pointDistance / 1000).toFixed(1))
   return myLabels
-}
-
-/**
- * Generate elevation data array for usage with chart
- * @param segment Track Segment
- */
-function genData(segment: TrackSegmentWithDistance): number[] {
-  const dataset = segment.map((_) => _.elevation)
-  return dataset
 }
 
 /**
