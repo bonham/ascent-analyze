@@ -67,7 +67,7 @@ const lineStringFeature = computed(() => {
 })
 
 // computed
-// const segmentTransformationManager = computed(() => new SegmentTransformManager(trackSegmentIndexed.value))
+const elevationData = computed(() => elevationChartSegment.value?.getSegment().map((_) => _.elevation) ?? null)
 
 // computed
 const slopeIntervals = computed<[number, number][]>(() =>
@@ -202,8 +202,7 @@ onUnmounted(() => {
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue"
-        :elevation-data="elevationChartSegment?.getSegment().map((_) => _.elevation) ?? null"
+      <ElevationChart :cursor-index="mapViewMouseIndexValue" :elevation-data="elevationData"
         :overlay-intervals="slopeIntervals"
         @highlight-xvalue="elevationChartMouseXValue = $event; tableHighlightXValue = $event"
         :point-distance=POINT_DISTANCE />

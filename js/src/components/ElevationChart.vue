@@ -32,8 +32,8 @@ const baseInterval = computed((): DataInterval | null => {
   const edata = props.elevationData
   if (edata === null) return null
   else {
-    const baseInterval = { start: 0, end: edata.length - 1 }
-    return baseInterval
+    const bi = { start: 0, end: edata.length - 1 }
+    return bi
   }
 })
 
@@ -61,7 +61,6 @@ let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance 
  */
 watchEffect(
   async () => {
-
     const overlayIntervals = props.overlayIntervals
 
     // set basic chart data
