@@ -338,8 +338,6 @@ onMounted(() => {
     }
   })
 
-
-
   /********************************************************************************** */
 
   function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
@@ -375,34 +373,29 @@ onMounted(() => {
   /**
    * watch vertical cursor external change 
    */
-  // watch(
-  //   () => props.cursorIndex,
-  //   (newIndex) => {
-  //     //console.log("New index: ", newIndex)
-  //     // does not work      if (chartInstance !== null) { chartInstance.clear(); chartInstance.render() } // to clear any existing line
-  //     if (newIndex === null) return
-  //     if (chartInstance &&
-  //       chartInstance.data.labels &&
-  //       chartInstance.data.labels.length > 0 &&
-  //       chartInstance.config.plugins
-  //     ) {
-  //       // convert cursorIndex ( virtual ) to internal index:
-  //       const newIndexVirtual = props.trackSegmentInd?.toInternalIndex(newIndex)
-  //       if (newIndexVirtual === undefined) return
-  //       const pixelX = chartInstance.scales['x'].getPixelForValue(newIndexVirtual); // e.g. 'March'
-  //       //console.log("Pixel X", pixelX)
-  //       //        const pluginInstance = Chart.registry.plugins.get('verticalLinePlugin');
-  //       const pluginInstance = verticalLinePlugin;
-  //       if (pluginInstance !== undefined
-  //         && pluginInstance !== null
-  //       ) {
-  //         const vlp = pluginInstance as VerticalLinePlugin;
-  //         vlp.mouseX = pixelX;
-  //         chartInstance.update('none'); // to avoid animation
-  //       }
-  //     }
-  //   }
-  // )
+  watch(
+    () => props.cursorIndex,
+    (newIndex) => {
+      //console.log("New index: ", newIndex)
+      // does not work      if (chartInstance !== null) { chartInstance.clear(); chartInstance.render() } // to clear any existing line
+      if (newIndex === null) return
+      if (chartInstance &&
+        chartInstance.data.labels &&
+        chartInstance.data.labels.length > 0 &&
+        chartInstance.config.plugins
+      ) {
+        const pixelX = chartInstance.scales['x'].getPixelForValue(newIndex); // e.g. 'March'
+        const pluginInstance = verticalLinePlugin;
+        if (pluginInstance !== undefined
+          && pluginInstance !== null
+        ) {
+
+          verticalLinePlugin.mouseX = pixelX;
+          chartInstance.update('none'); // to avoid animation
+        }
+      }
+    }
+  )
 
 
 });

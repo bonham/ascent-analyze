@@ -65,11 +65,15 @@ function processZoom(zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack
 }
 
 /**
- * 
- * @param clientX x position of mouse
- * @param chartInstance Chart instance
- * @param leftCanvasCoordinate Left coordinate of canvas
- * @returns index position of category X-scale of chart
+ * Calculates the x-axis value on the chart corresponding to the mouse position.
+ *
+ * Converts the mouse's clientX position to a pixel position relative to the chart's canvas,
+ * then uses the chart's x-scale to determine the corresponding data value or index.
+ *
+ * @param clientX - The x position of the mouse event (relative to the viewport).
+ * @param chartInstance - The Chart.js chart instance.
+ * @param leftCanvasCoordinate - The left coordinate of the canvas (relative to the viewport).
+ * @returns The x-axis value or index corresponding to the mouse position, or undefined if not available.
  */
 function calcXPosition(clientX: number, chartInstance: Chart<'line', number[], string>, leftCanvasCoordinate: number): number | undefined {
 
