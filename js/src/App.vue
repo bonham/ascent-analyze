@@ -24,6 +24,7 @@ const featureCollection = ref<FeatureCollection>({ type: "FeatureCollection", fe
 const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
 const elevationChartMouseXValue = ref<number | null>(null);
 const mapViewMouseIndexValue = ref<number | null>(null);
+const tableHighlightXValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
 const windowSizeMeters = ref(WINDOW_SIZE_METERS)
 const startGradient = ref(START_TRIGGER_GRADIENT)
@@ -73,12 +74,12 @@ const slopeIntervals = computed<[number, number][]>(() =>
   analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold_m.value, stopThreshold_m.value, windowSizePoints.value)
 )
 const tableHighlightIndex = computed(() => {
-  if (elevationChartMouseXValue.value === null) {
+  if (tableHighlightXValue.value === null) {
     return null
   } else {
     // find interval containing this index
     const idx = slopeIntervals.value.findIndex((intv) =>
-      (elevationChartMouseXValue.value !== null) && (elevationChartMouseXValue.value >= intv[0]) && (elevationChartMouseXValue.value <= intv[1])
+      (tableHighlightXValue.value !== null) && (tableHighlightXValue.value >= intv[0]) && (tableHighlightXValue.value <= intv[1])
     )
     const returnIndex = idx >= 0 ? idx + 1 : null // return interval id (1-based)
     return returnIndex
@@ -135,22 +136,6 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
   }
 })
 
-/**
- * Zoom event queue for handling zoom events from elevation chart
- */
-// const zoomQueue = new ZoomEventQueue((centerIndex, factor) => {
-//   const newSegment = segmentTransformationManager.value.applyFactorInternal(centerIndex, factor)
-//   zoomMapOnUpdate.value = false
-//   console.log("Queue func seg min max internalcenter", newSegment.minIndex(), newSegment.maxIndex(), centerIndex)
-//   updateElevationChart(newSegment)
-// })
-
-// const panQueue = new PanEventQueue((panDelta) => {
-//   const newSegment = segmentTransformationManager.value.pan(panDelta)
-//   zoomMapOnUpdate.value = false
-//   updateElevationChart(newSegment)
-// })
-
 /** Main trigger */
 initialLoad().catch((err) => {
   console.error("Error in initial load:", err)
@@ -164,46 +149,6 @@ async function initialLoad(): Promise<void> {
   elevationChartSegment.value = trackSegmentIndexed.value
 }
 
-
-/**
- * Updates Elevation Chart
- * @param newTrack New indexed track to use for updating 
- */
-// function updateElevationChart(newTrack: TrackSegmentIndexed) {
-//   elevationChartSegment.value = newTrack
-// }
-
-/********************** Event handling  **************************************/
-
-/**
- * Handles event from elevation chart component
- * 
- * @param xValue index number of mouse position in chart
- * @param deltaY mouse wheel scroll value
- */
-// function handleZoomEvent(xValue: number, deltaY: number) {
-
-//   if (zoomQueue === undefined) return
-
-//   const ZOOMIN_INCREMENT_FACTOR = 0.7
-//   const DELTA_Y_NORM = 68 // mouse event if mousewheel sensitivity is reasonably normal
-//   let incrementalZoomFactor: number
-
-//   if (deltaY > 0) {
-//     // zoom out
-//     incrementalZoomFactor = Math.abs(deltaY) / (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM)
-//   } else {
-//     // zoom in
-//     incrementalZoomFactor = (ZOOMIN_INCREMENT_FACTOR * DELTA_Y_NORM) / Math.abs(deltaY)
-//   }
-//   //console.log("DeltaY", deltaY, "Inc zoom factor:", incrementalZoomFactor, "Xvalue:", xValue)
-//   zoomQueue.queue(xValue, incrementalZoomFactor)
-// }
-
-// function handlePanEvent(deltaX: number) {
-//   if (panQueue === undefined) return
-//   panQueue.queue(deltaX)
-// }
 /********************** File handling  **************************************/
 
 async function processUploadFiles(files: FileList) {
@@ -253,13 +198,14 @@ onUnmounted(() => {
       <div class="row border py-1">
         <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
           :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate"
-          @hover-index="mapViewMouseIndexValue = $event" />
+          @hover-index="mapViewMouseIndexValue = $event; tableHighlightXValue = $event" />
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
       <ElevationChart :cursor-index="mapViewMouseIndexValue"
         :elevation-data="elevationChartSegment?.getSegment().map((_) => _.elevation) ?? null"
-        :overlay-intervals="slopeIntervals" @highlight-xvalue="elevationChartMouseXValue = $event"
+        :overlay-intervals="slopeIntervals"
+        @highlight-xvalue="elevationChartMouseXValue = $event; tableHighlightXValue = $event"
         :point-distance=POINT_DISTANCE />
     </div>
     <div class="row my-3">
