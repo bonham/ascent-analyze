@@ -59,6 +59,7 @@ let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance 
  * Also needs these global vars
  * - chartInstance
  */
+let initialUpdateRun = true
 watchEffect(
   async () => {
     const overlayIntervals = props.overlayIntervals
@@ -92,7 +93,13 @@ watchEffect(
     }
 
     // update overlay intervals
-    requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
+    if (initialUpdateRun) {
+      requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
+      console.log("initial run")
+      initialUpdateRun = false
+    } else {
+      chartInstance.update('none')
+    }
   },
   {
     flush: 'post'  // to ensure DOM is updated (canvas available)
