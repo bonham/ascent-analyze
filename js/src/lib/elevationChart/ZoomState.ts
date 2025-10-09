@@ -84,6 +84,7 @@ class ZoomState {
     }
 
     const zoomFactor = Math.exp(accDelta * this._sensitivity)
+    // console.log(`curr ${this._currentInterval.start} ${this._currentInterval.end} `)
 
     const chartXPosition = this._xPositionForZoom
     const stretched = stretchInterval(
@@ -95,6 +96,7 @@ class ZoomState {
       this._baseInterval.end,
       MIN_STRETCH_INTERVAL_LENGTH
     )
+    // console.log(`AccDelta ${accDelta} zoomFactor ${zoomFactor} xPos ${chartXPosition} \nstretch ${this._currentInterval.start} ${this._currentInterval.end} -> ${stretched.start} ${stretched.end}`)
     this._currentInterval = stretched
     return stretched
   }

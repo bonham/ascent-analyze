@@ -1,6 +1,6 @@
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import throttle from 'lodash/throttle'
-const { round, max, min } = Math
+const { ceil, floor, max, min } = Math
 
 type ZoomFunction = (centerIndex: number, factor: number) => void
 type PanFunction = (panDelta: number) => void
@@ -227,8 +227,8 @@ function stretchInterval(i_start: number, i_end: number, mid: number, factor: nu
   const new_start1 = mid - actualFactor * (mid - i_start)
   const new_end1 = mid + actualFactor * (i_end - mid)
 
-  const new_start2 = round(new_start1)
-  const new_end2 = round(new_end1)
+  const new_start2 = floor(new_start1) // use floor over 'round' to always increase size of interval even when it is small
+  const new_end2 = ceil(new_end1) // use ceil over 'round'
 
   const new_start = max(new_start2, I_min)
   const new_end = min(new_end2, I_max)
