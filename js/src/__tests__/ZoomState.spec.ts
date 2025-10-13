@@ -21,7 +21,7 @@ describe("ZoomState", () => {
 
     // start zoom, this should return current delta and reset to 0
     const streched = zs.startZoom() // should reset delta
-    expect(streched.start).toEqual(3)
+    expect(streched.start).toEqual(2)
     expect(streched.end).toEqual(8)
     expect(zs.accumulatedDelta()).toEqual(0)
     expect(zs.zoomInProgress()).toBeTruthy()

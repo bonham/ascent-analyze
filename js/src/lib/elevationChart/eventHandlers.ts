@@ -24,12 +24,13 @@ function wheelEventHandler(deltaY: number, xPosition: number, zoomState: ZoomSta
     requestAnimationFrame(
       () => {
         if (zoomState.zoomInProgress()) {
-          console.log("Zoom in progress")
+          console.log("Zoom in progress in animation frame")
           return
         };
 
         // in the meantime, another scheduled animation frame could have cleaned up the queue
         if (zoomState.accumulatedDelta() === 0) {
+          console.log("Zoom queue already cleaned up")
           return
         };
         processZoom(zoomState, updateChartCallbackFn)

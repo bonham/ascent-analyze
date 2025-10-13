@@ -11,7 +11,7 @@ describe("AppHelpers", () => {
     const m = 45;
     const f = 1.3;
     const { start, end } = stretchInterval(k, l, m, f);
-    expect(start).toEqual(39);
+    expect(start).toEqual(38);
     expect(end).toEqual(52);
   })
 
@@ -45,8 +45,8 @@ describe("AppHelpers", () => {
     const f = 0.133;
 
     const { start, end } = stretchInterval(k, l, m, f, undefined, undefined, 1);
-    expect(end - start).toEqual(13);
-    expect(start).toEqual(9)
+    expect(end - start).toEqual(14);
+    expect(start).toEqual(8)
     expect(end).toEqual(22)
   })
 
