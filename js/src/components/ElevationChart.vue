@@ -9,7 +9,7 @@ import { onMounted, ref, watch, watchEffect, computed } from 'vue';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
-import { ZoomState, type DataInterval } from '@/lib/elevationChart/ZoomState';
+import { ZoomPanState, type DataInterval } from '@/lib/elevationChart/ZoomState';
 import { wheelEventHandler, panEventHandler, calcXPosition } from '@/lib/elevationChart/eventHandlers';
 import { Chart } from 'chart.js/auto';
 
@@ -295,7 +295,7 @@ onMounted(() => {
         canvas.removeEventListener('mousemove', oldMouseMoveHandler)
       }
 
-      const zoomState = new ZoomState(ZOOM_SENSITIVITY, newInterval)
+      const zoomState = new ZoomPanState(ZOOM_SENSITIVITY, newInterval)
 
 
       /**

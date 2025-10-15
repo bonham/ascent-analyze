@@ -30,11 +30,8 @@ const VERBOSE = false
  *
  * This class is designed to be used in interactive chart components where zooming behavior must be managed and constrained.
  */
-class ZoomState {
+class ZoomPanState {
   _zoomInProgress: boolean = false
-
-  _lastxPosition: number | undefined = undefined
-  _xPositionForZoom: number | undefined
 
   _sensitivity: number
   _baseInterval: DataInterval
@@ -133,23 +130,14 @@ class ZoomState {
     return !this._hasChanged
   }
 
-  zoomInProgress(): boolean {
+  transformInProgress(): boolean {
     return this._zoomInProgress
   }
 
-  zoomNotInProgress(): boolean {
+  transformNotInProgress(): boolean {
     return !this._zoomInProgress
   }
-
-  lastxPosition() {
-    return this._lastxPosition
-  }
-
-  xPositionForZoom() {
-    return this._xPositionForZoom
-  }
-
 }
 
 
-export { ZoomState, type DataInterval }
+export { ZoomPanState, type DataInterval }

@@ -1,4 +1,4 @@
-import { ZoomState, type DataInterval } from "./ZoomState";
+import { ZoomPanState, type DataInterval } from "./ZoomState";
 import Chart from 'chart.js/auto';
 
 const VERBOSELOG = false
@@ -8,78 +8,69 @@ type UpdateCallBack = (obj: DataInterval) => void
 /**
  * Handles mouse wheel events for zooming on the chart.
  * 
- * Adds the wheel delta and x position to the zoom state, and schedules a zoom frame if one is not already in progress.
+ * Adds the wheel delta and x position to the state, and schedules a zoom frame if one is not already in progress.
  * When the scheduled frame runs, it processes the accumulated zoom and updates the chart.
  * 
  * @param deltaY The vertical scroll amount from the wheel event.
  * @param xPosition The x-axis position where the wheel event occurred.
- * @param zoomState The current zoom state object.
+ * @param zoomPanState The current state object.
  * @param updateChartCallbackFn Callback to update the chart with the new data interval.
  */
-function wheelEventHandler(deltaY: number, xPosition: number, zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
+function wheelEventHandler(deltaY: number, xPosition: number, zoomPanState: ZoomPanState, updateChartCallbackFn: UpdateCallBack) {
   if (VERBOSELOG) console.log("wheel delta", deltaY)
   // add the delta regardless if zoom is in progress or not.
-  zoomState.zoomTransformation(deltaY, xPosition)
+  zoomPanState.zoomTransformation(deltaY, xPosition)
 
-  // Schedule a frame if not already updating
-  if (zoomState.zoomNotInProgress()) {
-
-    // schedule for later
-    requestAnimationFrame(
-      () => {
-        if (zoomState.zoomInProgress()) {
-          console.log("Zoom already in progress")
-          return
-        };
-
-        if (zoomState.hasNotChanged()) {
-          console.log("No zoom change to process. Returning")
-        }
-
-        processZoom(zoomState, updateChartCallbackFn)
-      }
-    );
-  } else {
-    console.log("Zoom is in progress doing nothing")
-  }
-
+  processTransform(zoomPanState, updateChartCallbackFn)
 }
+
+/**
+ * Handles mouse drag events for panning on the chart.
+ *
+ * Applies the horizontal shift (shiftX) to the state, and schedules a frame to process the pan transformation.
+ * When the scheduled frame runs, it updates the chart with the new data interval.
+ *
+ * @param shiftX The horizontal shift amount from the pan event.
+ * @param zoomPanState The current state object.
+ * @param updateChartCallbackFn Callback to update the chart with the new data interval.
+ */
+function panEventHandler(shiftX: number, zoomPanState: ZoomPanState, updateChartCallbackFn: UpdateCallBack) {
+  if (VERBOSELOG) console.log("Pan shiftX", shiftX)
+  zoomPanState.panTransformation(shiftX)
+  processTransform(zoomPanState, updateChartCallbackFn)
+}
+
 
 /**
  * Processes the accumulated zoom actions and updates the chart.
  *
- * Initiates the zoom operation using the current zoom state, calls the update callback with the new data interval,
- * and clears the zoom state. If additional scroll events occurred during processing, schedules another frame to catch up.
+ * Initiates the zoom operation using the current state, calls the update callback with the new data interval,
+ * and clears the state. If additional scroll events occurred during processing, schedules another frame to catch up.
  *
- * @param zoomState The current zoom state object.
+ * @param zoomPanState The current state object.
  * @param updateChartCallbackFn Callback to update the chart with the new data interval.
  */
-function processZoom(zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
+function processTransform(zoomPanState: ZoomPanState, updateChartCallbackFn: UpdateCallBack) {
+  // Schedule a frame if not already updating
+  if (zoomPanState.transformNotInProgress()) {
 
-  const stretched = zoomState.getTransformedInterval()
-  zoomState.setHasChanged(false)
-  zoomState.setZoomInProgress(true)
-  updateChartCallbackFn(stretched) // assuming this is 'synchronous' - in case it is async - then we need a 'then' to check for .hasChanged() again
-  zoomState.setZoomInProgress(false)
-
-}
-
-function panEventHandler(shiftX: number, zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
-  if (VERBOSELOG) console.log("Pan shiftX", shiftX)
-  zoomState.panTransformation(shiftX)
-  if (zoomState.zoomNotInProgress()) {
+    // schedule for later
     requestAnimationFrame(
       () => {
-        if (zoomState.zoomInProgress()) {
+        if (zoomPanState.transformInProgress()) {
           console.log("Zoom already in progress")
           return
         };
 
-        if (zoomState.hasNotChanged()) {
+        if (zoomPanState.hasNotChanged()) {
           console.log("No zoom change to process. Returning")
         }
 
-        processZoom(zoomState, updateChartCallbackFn)
+        const stretched = zoomPanState.getTransformedInterval()
+        zoomPanState.setHasChanged(false)
+        zoomPanState.setZoomInProgress(true)
+        updateChartCallbackFn(stretched) // assuming this is 'synchronous' - in case it is async - then we need a 'then' to check for .hasChanged() again
+        zoomPanState.setZoomInProgress(false)
       }
     );
   } else {
