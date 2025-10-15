@@ -1,4 +1,5 @@
 import { stretchInterval } from '@/lib/app/transformHelpers';
+const { ceil, floor } = Math
 
 interface DataInterval {
   start: number,
@@ -6,7 +7,7 @@ interface DataInterval {
 }
 
 const MIN_STRETCH_INTERVAL_LENGTH = 5
-
+const VERBOSE = false
 
 /**
  * Manages the zoom state and logic for an elevation chart, handling user interactions such as mouse wheel zooming.
@@ -31,7 +32,6 @@ const MIN_STRETCH_INTERVAL_LENGTH = 5
  */
 class ZoomState {
   _zoomInProgress: boolean = false
-  _accumulatedDelta: number = 0
 
   _lastxPosition: number | undefined = undefined
   _xPositionForZoom: number | undefined
@@ -39,6 +39,8 @@ class ZoomState {
   _sensitivity: number
   _baseInterval: DataInterval
   _currentInterval: DataInterval
+
+  _hasChanged = false // indicator if last changes have been processed
 
   constructor(sensitivity: number, baseInterval: DataInterval) {
     this._sensitivity = sensitivity
@@ -53,10 +55,42 @@ class ZoomState {
    * @param midPoint - The x-axis position around which the zoom is centered.
    */
   zoomTransformation(delta: number, midPoint: number) {
-    this._accumulatedDelta += delta
-    this._lastxPosition = midPoint
+    if (VERBOSE) console.log("Transform", delta)
+    const zoomFactor = Math.exp(delta * this._sensitivity)
+    const stretchedFloat = stretchInterval(
+      this._currentInterval.start,
+      this._currentInterval.end,
+      midPoint,
+      zoomFactor,
+      this._baseInterval.start,
+      this._baseInterval.end,
+      MIN_STRETCH_INTERVAL_LENGTH
+    )
+    this._currentInterval = stretchedFloat
+    this._hasChanged = true
+
   }
 
+  panTransformation(shiftX: number) {
+    const I_min = this._baseInterval.start
+    const I_max = this._baseInterval.end
+    const current_start = this._currentInterval.start
+    const current_end = this._currentInterval.end
+    let newStart = current_start + shiftX
+    let newEnd = current_end + shiftX
+
+    // check boundaries
+    if (newStart < I_min) {
+      newStart = I_min
+      newEnd = newStart + (current_end - current_start)
+    }
+    if (newEnd > I_max) {
+      newEnd = I_max
+      newStart = newEnd - (current_end - current_start)
+    }
+    this._currentInterval = { start: newStart, end: newEnd }
+    this._hasChanged = true
+  }
 
   /**
    * Initiates the zoom progress on the elevation chart based on the current mouse position and accumulated zoom delta.
@@ -68,53 +102,43 @@ class ZoomState {
    * @param getXValueForPixel - A function that maps a canvas X pixel position to a chart X value.
    * @returns The new stretched data interval after applying the zoom, or the current interval if the mouse position is undefined.
    */
-  startZoom(): DataInterval {
-    if (this._zoomInProgress === true) {
-      console.warn("Progress was already set.")
-    }
+  getTransformedInterval(): DataInterval {
 
     this._zoomInProgress = true
-    const accDelta = this.accumulatedDelta()
-    this._accumulatedDelta = 0
 
-    this._xPositionForZoom = this._lastxPosition
-    if (this._xPositionForZoom === undefined) {
-      console.warn("X position undefined")
-      return this._currentInterval
+    const roundedStretched = {
+      start: floor(this._currentInterval.start),
+      end: ceil(this._currentInterval.end)
     }
-
-    const zoomFactor = Math.exp(accDelta * this._sensitivity)
-    // console.log(`curr ${this._currentInterval.start} ${this._currentInterval.end} `)
-
-    const chartXPosition = this._xPositionForZoom
-    const stretched = stretchInterval(
-      this._currentInterval.start,
-      this._currentInterval.end,
-      chartXPosition,
-      zoomFactor,
-      this._baseInterval.start,
-      this._baseInterval.end,
-      MIN_STRETCH_INTERVAL_LENGTH
-    )
-    // console.log(`AccDelta ${accDelta} zoomFactor ${zoomFactor} xPos ${chartXPosition} \nstretch ${this._currentInterval.start} ${this._currentInterval.end} -> ${stretched.start} ${stretched.end}`)
-    this._currentInterval = stretched
-    return stretched
+    // a bit dirty: set internal interval also to rounded
+    this._currentInterval = roundedStretched
+    return roundedStretched
   }
 
-  zoomFinished(): void {
-
-    if (this._zoomInProgress === false) {
-      console.warn("Zoom was already stopped")
-    }
-    this._zoomInProgress = false
+  setHasChanged(b: boolean) {
+    if (VERBOSE) console.log("HasChanged", b)
+    this._hasChanged = b
   }
 
-  accumulatedDelta(): number {
-    return this._accumulatedDelta
+  setZoomInProgress(b: boolean) {
+    if (VERBOSE) console.log("Zoominprogress", b)
+    this._zoomInProgress = b
+  }
+
+  hasChanged() {
+    return this._hasChanged
+  }
+
+  hasNotChanged() {
+    return !this._hasChanged
   }
 
   zoomInProgress(): boolean {
     return this._zoomInProgress
+  }
+
+  zoomNotInProgress(): boolean {
+    return !this._zoomInProgress
   }
 
   lastxPosition() {
@@ -124,6 +148,7 @@ class ZoomState {
   xPositionForZoom() {
     return this._xPositionForZoom
   }
+
 }
 
 

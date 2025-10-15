@@ -10,7 +10,7 @@ import { onMounted, ref, watch, watchEffect, computed } from 'vue';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 import { ZoomState, type DataInterval } from '@/lib/elevationChart/ZoomState';
-import { wheelEventHandler, calcXPosition, type UpdateCallBack } from '@/lib/elevationChart/eventHandlers';
+import { wheelEventHandler, panEventHandler, calcXPosition } from '@/lib/elevationChart/eventHandlers';
 import { Chart } from 'chart.js/auto';
 
 type TType = 'line';
@@ -256,34 +256,6 @@ onMounted(() => {
     scaleXStart = undefined
   })
 
-  canvas.addEventListener('mousemove', (event) => {
-
-    if (isDragging) {
-      console.log("Dragging - ignoring mousemove")
-      if (chartInstance === null || chartInstance === undefined) return
-
-      const scaleXCurrent = clientXtoChartX(canvas, event.clientX)
-      console.log("Scale X current", scaleXCurrent)
-      if (scaleXCurrent === undefined) {
-        console.log("Cannot get scaleXCurrent")
-        return
-      }
-      if (scaleXStart === undefined) {
-        console.log("pixelXStart is undefined")
-        return
-      }
-      const deltaX = scaleXCurrent - scaleXStart
-      console.log("Delta X", deltaX)
-      // emit('pan', -deltaX) // negative, because moving mouse right means panning left
-
-    } else {
-
-      event.stopPropagation()
-      const clientX = event.clientX
-      emitXPosition(canvas, clientX)
-
-    }
-  })
 
   canvas.addEventListener('touchmove', (event) => {
     if (event.touches.length === 0) return;
@@ -303,7 +275,14 @@ onMounted(() => {
 
   /********************    Zoom handling   ****************************************** */
 
+  function updateChartFn(obj: DataInterval): void {
+    if (viewPortRef.value !== undefined) {
+      viewPortRef.value = obj
+    }
+  }
+
   let oldWheelHandler: ((event: WheelEvent) => void) | undefined
+  let oldMouseMoveHandler: ((event: MouseEvent) => void) | undefined
 
   watch(baseInterval, (newInterval) => {
 
@@ -311,6 +290,9 @@ onMounted(() => {
 
       if (oldWheelHandler !== undefined) {
         canvas.removeEventListener('wheel', oldWheelHandler)
+      }
+      if (oldMouseMoveHandler !== undefined) {
+        canvas.removeEventListener('mousemove', oldMouseMoveHandler)
       }
 
       const zoomState = new ZoomState(ZOOM_SENSITIVITY, newInterval)
@@ -329,18 +311,42 @@ onMounted(() => {
         const xPosition = calcXPosition(event.clientX, chartInstance, canvas.getBoundingClientRect().left)
         if (xPosition === undefined) { console.log("xPosition undefined in wheel handler"); return }
 
-        const updateChartFn: UpdateCallBack = (obj: DataInterval) => {
-          if (viewPortRef.value !== undefined) {
-            viewPortRef.value = obj
-          }
-        }
 
         wheelEventHandler(event.deltaY, xPosition, zoomState, updateChartFn)
 
       }
       canvas.addEventListener('wheel', newWheelHandler)
 
+      const newMouseMoveHandler = (event: MouseEvent) => {
+
+        if (isDragging) {
+          if (chartInstance === null || chartInstance === undefined) return
+
+          const scaleXCurrent = clientXtoChartX(canvas, event.clientX)
+          if (scaleXCurrent === undefined) {
+            console.log("Cannot get scaleXCurrent")
+            return
+          }
+          if (scaleXStart === undefined) {
+            console.log("pixelXStart is undefined")
+            return
+          }
+          const shiftX = scaleXCurrent - scaleXStart
+          // negative deltaX because moving mouse right means panning left
+          panEventHandler(-shiftX, zoomState, updateChartFn)
+
+        } else {
+
+          event.stopPropagation()
+          const clientX = event.clientX
+          emitXPosition(canvas, clientX)
+
+        }
+      }
+      canvas.addEventListener('mousemove', newMouseMoveHandler)
+
       oldWheelHandler = newWheelHandler
+      oldMouseMoveHandler = newMouseMoveHandler
     }
   })
 

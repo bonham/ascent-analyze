@@ -1,6 +1,8 @@
 import { ZoomState, type DataInterval } from "./ZoomState";
 import Chart from 'chart.js/auto';
 
+const VERBOSELOG = false
+
 type UpdateCallBack = (obj: DataInterval) => void
 
 /**
@@ -15,24 +17,25 @@ type UpdateCallBack = (obj: DataInterval) => void
  * @param updateChartCallbackFn Callback to update the chart with the new data interval.
  */
 function wheelEventHandler(deltaY: number, xPosition: number, zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
-
+  if (VERBOSELOG) console.log("wheel delta", deltaY)
   // add the delta regardless if zoom is in progress or not.
   zoomState.zoomTransformation(deltaY, xPosition)
 
-  // Schedule a frame if not already zooming
-  if (!zoomState.zoomInProgress()) {
+  // Schedule a frame if not already updating
+  if (zoomState.zoomNotInProgress()) {
+
+    // schedule for later
     requestAnimationFrame(
       () => {
         if (zoomState.zoomInProgress()) {
-          console.log("Zoom in progress in animation frame")
+          console.log("Zoom already in progress")
           return
         };
 
-        // in the meantime, another scheduled animation frame could have cleaned up the queue
-        if (zoomState.accumulatedDelta() === 0) {
-          console.log("Zoom queue already cleaned up")
-          return
-        };
+        if (zoomState.hasNotChanged()) {
+          console.log("No zoom change to process. Returning")
+        }
+
         processZoom(zoomState, updateChartCallbackFn)
       }
     );
@@ -53,15 +56,34 @@ function wheelEventHandler(deltaY: number, xPosition: number, zoomState: ZoomSta
  */
 function processZoom(zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
 
-  const stretched = zoomState.startZoom()
-  updateChartCallbackFn(stretched)
+  const stretched = zoomState.getTransformedInterval()
+  zoomState.setHasChanged(false)
+  zoomState.setZoomInProgress(true)
+  updateChartCallbackFn(stretched) // assuming this is 'synchronous' - in case it is async - then we need a 'then' to check for .hasChanged() again
+  zoomState.setZoomInProgress(false)
 
-  zoomState.zoomFinished(); // clear state
+}
 
-  // If more scroll happened during zoom, schedule another frame - can this happen?
-  if (zoomState.accumulatedDelta() !== 0) {
-    console.log("Catching up")
-    requestAnimationFrame(() => processZoom(zoomState, updateChartCallbackFn));
+function panEventHandler(shiftX: number, zoomState: ZoomState, updateChartCallbackFn: UpdateCallBack) {
+  if (VERBOSELOG) console.log("Pan shiftX", shiftX)
+  zoomState.panTransformation(shiftX)
+  if (zoomState.zoomNotInProgress()) {
+    requestAnimationFrame(
+      () => {
+        if (zoomState.zoomInProgress()) {
+          console.log("Zoom already in progress")
+          return
+        };
+
+        if (zoomState.hasNotChanged()) {
+          console.log("No zoom change to process. Returning")
+        }
+
+        processZoom(zoomState, updateChartCallbackFn)
+      }
+    );
+  } else {
+    console.log("Zoom is in progress doing nothing")
   }
 }
 
@@ -89,4 +111,4 @@ function calcXPosition(clientX: number, chartInstance: Chart<'line', number[], s
 }
 
 
-export { calcXPosition, wheelEventHandler, type UpdateCallBack } 
+export { calcXPosition, wheelEventHandler, panEventHandler, type UpdateCallBack } 
