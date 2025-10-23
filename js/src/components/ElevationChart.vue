@@ -2,6 +2,7 @@
   <div class="chart-container px-1">
     <canvas ref="canvasRef"></canvas>
   </div>
+  <div>{{ mylog }}</div>
 </template>
 
 <script setup lang="ts">
@@ -10,7 +11,9 @@ import { onMounted, ref, watch, watchEffect, computed } from 'vue';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 // import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 import { ZoomPanState, type DataInterval } from '@/lib/elevationChart/ZoomState';
-import { wheelEventHandler, panEventHandler, calcXPosition } from '@/lib/elevationChart/eventHandlers';
+import { wheelEventHandler, panEventHandler, calcXPosition, touchEventHandler } from '@/lib/elevationChart/eventHandlers';
+import { TransformPixelScale2ChartScale } from '@/lib/elevationChart/TransformPixelScale2ChartScale';
+
 import { Chart } from 'chart.js/auto';
 
 type TType = 'line';
@@ -45,6 +48,7 @@ const emit = defineEmits<{
 /****** Refs *****/
 const canvasRef = ref<HTMLCanvasElement | null>(null);// 👇 Canvas reference
 const viewPortRef = ref<DataInterval | null>(null)
+const mylog = ref<string>("");
 
 /***   *****  */
 let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance holder
@@ -257,19 +261,6 @@ onMounted(() => {
   })
 
 
-  canvas.addEventListener('touchmove', (event) => {
-    if (event.touches.length === 0) return;
-    if (event.touches.length > 1) return; // only single touch
-    const client = event.touches[0];
-    emitXPosition(canvas, client.clientX)
-  })
-
-  canvas.addEventListener('touchstart', (event) => {
-    if (event.touches.length === 0) return;
-    if (event.touches.length > 1) return; // only single touch
-    const client = event.touches[0];
-    emitXPosition(canvas, client.clientX)
-  })
 
 
 
@@ -347,6 +338,68 @@ onMounted(() => {
 
       oldWheelHandler = newWheelHandler
       oldMouseMoveHandler = newMouseMoveHandler
+
+      /****************** Touch ******************** */
+
+      const tpc = new TransformPixelScale2ChartScale()
+
+      canvas.addEventListener('touchstart', (event) => {
+
+        event.preventDefault()
+
+        if (event.touches.length === 1) {
+          const client = event.touches[0];
+          emitXPosition(canvas, client.clientX)
+
+          mylog.value = "-- cleared --"
+
+        } else if (event.touches.length === 2) {
+
+          if (!chartInstance) return
+          if (!chartInstance.data.labels) return
+
+          tpc.setChartStartInterval(zoomState.getCurrentInterval())
+          const x0 = 0
+          const p0 = chartInstance.scales['x'].getPixelForValue(x0)
+          const x1 = chartInstance.options.scales!['x']!.max as number
+          const p1 = chartInstance.scales['x'].getPixelForValue(x1)
+
+          tpc.setPoints(p0, x0, p1, x1)
+          tpc.setPixelStartInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
+
+          mylog.value = `ts p0=${p0.toFixed(0)} x0=${x0.toFixed(0)} p1=${p1.toFixed(0)} x1=${x1.toFixed(0)}`
+        } else {
+          return
+        }
+      })
+
+      canvas.addEventListener('touchend', () => {
+
+      })
+
+      canvas.addEventListener('touchmove', (event) => {
+
+        if (event.touches.length === 1) {
+
+          const client = event.touches[0];
+          emitXPosition(canvas, client.clientX)
+
+        } else if (event.touches.length === 2) {
+
+          event.preventDefault()
+
+          tpc.setPixelPinchedInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
+          const newInterval = tpc.getChartPinchedInterval()
+          touchEventHandler(newInterval, zoomState, updateChartFn)
+
+          mylog.value = (`sf=${tpc.scaleFactor.toFixed(1)} ppd=${tpc.pixelPanDelta.toFixed(1)} cpd=${tpc.chartpanDelta.toFixed(1)} cpm=${tpc.chartPincedMid.toFixed(1)} ` +
+            `zf=${tpc.zoomFactor.toFixed(1)} pinchedI=${tpc.pixelPinchedInterval[0].toFixed(0)},` +
+            ` ${tpc.pixelPinchedInterval[1].toFixed(0)} chartPinchedI=${newInterval.start.toFixed(0)},${newInterval.end.toFixed(0)} ` +
+            `_curI=${zoomState._currentInterval.start.toFixed(0)},${zoomState._currentInterval.end.toFixed(0)}`)
+        } else {
+          return
+        }
+      })
     }
   })
 
@@ -369,8 +422,8 @@ onMounted(() => {
    * @returns The x-axis value (category index) corresponding to the pixel position, or undefined if not available.
    */
   function clientXtoChartX(canvas: HTMLCanvasElement, clientX: number) {
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
+    const rect: DOMRect = canvas.getBoundingClientRect(); //  returns a object w information about the size canvas and its position relative to the viewport.
+    const x = clientX - rect.left; // x: pixel distance from left boundary of canvas
     let xValue: number | undefined;
     if (chartInstance) {
       xValue = chartInstance.scales['x'].getValueForPixel(x);

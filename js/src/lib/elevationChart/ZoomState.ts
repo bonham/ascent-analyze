@@ -1,5 +1,5 @@
 import { stretchInterval } from '@/lib/app/transformHelpers';
-const { ceil, floor } = Math
+const { ceil, floor, round } = Math
 
 interface DataInterval {
   start: number,
@@ -26,21 +26,21 @@ const VERBOSE = false
  * 2. **Apply Zoom Transformations**: Call `zoomTransformation(delta, midPoint)` as the user interacts (e.g., mouse wheel events).
  * 3. **Start Zoom**: When ready to apply the accumulated zoom, call `startZoom()` to get the new interval.
  * 4. **Finish Zoom**: Call `zoomFinished()` to reset the zoom state after the operation.
- * 5. **Access State**: Use methods like `zoomInProgress()`, `accumulatedDelta()`, `lastxPosition()`, and `xPositionForZoom()` to query the current zoom state.
+ * 5. **Access State**: Use methods like `zoomInProgress()` to query the current zoom state.
  *
  * This class is designed to be used in interactive chart components where zooming behavior must be managed and constrained.
  */
 class ZoomPanState {
   _zoomInProgress: boolean = false
 
-  _sensitivity: number
+  _zoomSensitivity: number
   _baseInterval: DataInterval
   _currentInterval: DataInterval
 
   _hasChanged = false // indicator if last changes have been processed
 
   constructor(sensitivity: number, baseInterval: DataInterval) {
-    this._sensitivity = sensitivity
+    this._zoomSensitivity = sensitivity
     this._baseInterval = baseInterval
     this._currentInterval = baseInterval
   }
@@ -53,7 +53,7 @@ class ZoomPanState {
    */
   zoomTransformation(delta: number, midPoint: number) {
     if (VERBOSE) console.log("Transform", delta)
-    const zoomFactor = Math.exp(delta * this._sensitivity)
+    const zoomFactor = Math.exp(delta * this._zoomSensitivity)
     const stretchedFloat = stretchInterval(
       this._currentInterval.start,
       this._currentInterval.end,
@@ -89,21 +89,42 @@ class ZoomPanState {
     this._hasChanged = true
   }
 
+  setIntervalTransformation(newInterval: DataInterval) {
+    const B_min = this._baseInterval.start
+    const B_max = this._baseInterval.end
+
+    let newStart = round(newInterval.start)
+    let newEnd = round(newInterval.end)
+    const newLength = newEnd - newStart
+
+    // check boundaries
+    if (newStart < B_min) {
+      newStart = B_min
+      newEnd = newStart + newLength
+    }
+    if (newEnd > B_max) {
+      newEnd = B_max
+      newStart = newEnd - newLength
+    }
+
+    this._currentInterval = {
+      start: newStart,
+      end: newEnd
+    }
+    this._hasChanged = true
+  }
+
   /**
-   * Initiates the zoom progress on the elevation chart based on the current mouse position and accumulated zoom delta.
+   * Calculates and returns a transformed data interval by rounding the start and end
+   * values of the current interval to the nearest integers. This method also updates
+   * the internal `_currentInterval` to the rounded values.
    *
-   * This method calculates a new zoom factor using the accumulated delta and sensitivity, then stretches the current data interval
-   * around the mouse position to reflect the zoom. It ensures the zoom does not exceed the minimum allowed interval length and
-   * limits the boundaries to the base interval. If the mouse position is undefined, it logs a warning and returns the current interval.
-   *
-   * @param getXValueForPixel - A function that maps a canvas X pixel position to a chart X value.
-   * @returns The new stretched data interval after applying the zoom, or the current interval if the mouse position is undefined.
+   * @returns {DataInterval} The transformed data interval with rounded start and end values.
    */
   getTransformedInterval(): DataInterval {
 
-    this._zoomInProgress = true
-
     const roundedStretched = {
+      // floor and ceil needed to have always a change even when increments are smaller than 1, in order to not get stuck on high zoom levels
       start: floor(this._currentInterval.start),
       end: ceil(this._currentInterval.end)
     }
@@ -136,6 +157,15 @@ class ZoomPanState {
 
   transformNotInProgress(): boolean {
     return !this._zoomInProgress
+  }
+
+  getCurrentInterval() {
+    return this._currentInterval
+  }
+
+  setCurrentInterval(current: DataInterval) {
+    this._currentInterval = current
+    this._hasChanged = true
   }
 }
 

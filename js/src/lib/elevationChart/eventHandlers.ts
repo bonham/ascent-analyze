@@ -42,6 +42,15 @@ function panEventHandler(shiftX: number, zoomPanState: ZoomPanState, updateChart
 
 
 /**
+ * 
+ */
+function touchEventHandler(newInterval: DataInterval, zoomPanState: ZoomPanState, updateChartCallbackFn: UpdateCallBack) {
+  zoomPanState.setIntervalTransformation(newInterval)
+  processTransform(zoomPanState, updateChartCallbackFn)
+}
+
+
+/**
  * Processes the accumulated zoom actions and updates the chart.
  *
  * Initiates the zoom operation using the current state, calls the update callback with the new data interval,
@@ -58,12 +67,12 @@ function processTransform(zoomPanState: ZoomPanState, updateChartCallbackFn: Upd
     requestAnimationFrame(
       () => {
         if (zoomPanState.transformInProgress()) {
-          console.log("Zoom already in progress")
+          console.log("Transform already in progress")
           return
         };
 
         if (zoomPanState.hasNotChanged()) {
-          console.log("No zoom change to process. Returning")
+          console.log("No change to process. Returning")
         }
 
         const stretched = zoomPanState.getTransformedInterval()
@@ -74,7 +83,7 @@ function processTransform(zoomPanState: ZoomPanState, updateChartCallbackFn: Upd
       }
     );
   } else {
-    console.log("Zoom is in progress doing nothing")
+    console.log("Transform is in progress doing nothing")
   }
 }
 
@@ -102,4 +111,8 @@ function calcXPosition(clientX: number, chartInstance: Chart<'line', number[], s
 }
 
 
-export { calcXPosition, wheelEventHandler, panEventHandler, type UpdateCallBack } 
+/****  */
+
+
+
+export { calcXPosition, wheelEventHandler, panEventHandler, touchEventHandler, type UpdateCallBack } 
