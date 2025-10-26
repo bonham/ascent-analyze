@@ -91,9 +91,16 @@ watchEffect(
     const overlayLineData = genOverlayData(props.elevationData, overlayIntervals)
     chartInstance.data.datasets[1].data = overlayLineData
 
-    // calc start and stop index from viewport
+    // calc X scale start and stop index from viewport
     if (chartInstance.options.scales !== undefined) {
       chartInstance.options.scales['x'] = getScaleX(viewPortRef.value.start, viewPortRef.value.end)
+    }
+
+    // calc Y scale min max from visible data
+    const maxY = Math.max(...props.elevationData)
+    const minY = Math.min(...props.elevationData)
+    if (chartInstance.options.scales !== undefined) {
+      chartInstance.options.scales['y'] = getScaleY(minY, maxY)
     }
 
     // update overlay intervals
@@ -162,18 +169,35 @@ function getScaleX(min: number | undefined, max: number | undefined) {
   return s
 }
 
+// Calculate min max of y scale
+// - 10 % space above and below max / min of chart
+// - round to next upper 1/10 of range.
+function getScaleY(dataMin: number | undefined, dataMax: number | undefined) {
+  let minMaxOpts = {}
+  if (dataMin !== undefined && dataMax !== undefined) {
+    const range = dataMax - dataMin
+    const padding = range * 0.1
+    const minY = Math.floor((dataMin - padding) / 10) * 10
+    const maxY = Math.ceil((dataMax + padding) / 10) * 10
+    minMaxOpts = { min: minY, max: maxY }
+  }
+  const s = {
+    title: {
+      display: true,
+      text: 'Elevation (m)'
+    },
+    ...minMaxOpts
+  }
+  return s
+}
+
 // Initialize chart once on mount
 onMounted(() => {
 
 
   const scales = {
     x: getScaleX(undefined, undefined),
-    y: {
-      title: {
-        display: true,
-        text: 'Elevation (m)'
-      }
-    }
+    y: getScaleY(undefined, undefined)
   }
 
   const canvas = canvasRef.value;
