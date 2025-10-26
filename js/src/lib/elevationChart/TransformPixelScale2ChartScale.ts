@@ -60,18 +60,12 @@ export class TransformPixelScale2ChartScale {
     const midPixelPinched = intervalMidPoint(this.pixelPinchedInterval)
     const pixelPanDelta = midPixelPinched - midPixelStart
     this.pixelPanDelta = pixelPanDelta
-    const chartPanDelta = pixelPanDelta * scaleFactor
-    this.chartpanDelta = chartPanDelta
-
     const pixelStartLength = this.pixelStartInterval[1] - this.pixelStartInterval[0]
     const pixelPinchedLength = this.pixelPinchedInterval[1] - this.pixelPinchedInterval[0]
     let zoomFactor = pixelStartLength / pixelPinchedLength
-
-    const chartStartMid = intervalMidPoint(this.chartStartInterval)
-    const chartPinchedMid = chartStartMid - chartPanDelta // positive pan means we like to move x-scale in negative x direction
-    this.chartPincedMid = chartPinchedMid
     const chartStartLength = this.chartStartInterval[1] - this.chartStartInterval[0]
 
+    // Zoom
     if (zoomFactor < 1) {
       const minFactorLimit = this.MIN_INTERVAL_LENGTH / chartStartLength
       zoomFactor = Math.max(minFactorLimit, zoomFactor)
@@ -79,6 +73,14 @@ export class TransformPixelScale2ChartScale {
     this.zoomFactor = zoomFactor
     const chartPinchedLength = chartStartLength * zoomFactor
 
+    // Pan
+    const chartStartMid = intervalMidPoint(this.chartStartInterval)
+    const chartPanDelta = pixelPanDelta * scaleFactor * zoomFactor
+    this.chartpanDelta = chartPanDelta
+    const chartPinchedMid = chartStartMid - chartPanDelta // positive pan means we like to move x-scale in negative x direction
+    this.chartPincedMid = chartPinchedMid
+
+    // Result
     const chartPinchedInterval = [
       chartPinchedMid - chartPinchedLength / 2,
       chartPinchedMid + chartPinchedLength / 2
