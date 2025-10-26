@@ -2,6 +2,8 @@ import { type DataInterval } from "./ZoomState";
 
 export class TransformPixelScale2ChartScale {
 
+  MIN_INTERVAL_LENGTH = 20
+
   pixelChartScalePoints: {
     p0: number,
     x0: number,
@@ -63,13 +65,18 @@ export class TransformPixelScale2ChartScale {
 
     const pixelStartLength = this.pixelStartInterval[1] - this.pixelStartInterval[0]
     const pixelPinchedLength = this.pixelPinchedInterval[1] - this.pixelPinchedInterval[0]
-    const zoomFactor = pixelStartLength / pixelPinchedLength
-    this.zoomFactor = zoomFactor
+    let zoomFactor = pixelStartLength / pixelPinchedLength
 
     const chartStartMid = intervalMidPoint(this.chartStartInterval)
     const chartPinchedMid = chartStartMid - chartPanDelta // positive pan means we like to move x-scale in negative x direction
     this.chartPincedMid = chartPinchedMid
     const chartStartLength = this.chartStartInterval[1] - this.chartStartInterval[0]
+
+    if (zoomFactor < 1) {
+      const minFactorLimit = this.MIN_INTERVAL_LENGTH / chartStartLength
+      zoomFactor = Math.max(minFactorLimit, zoomFactor)
+    }
+    this.zoomFactor = zoomFactor
     const chartPinchedLength = chartStartLength * zoomFactor
 
     const chartPinchedInterval = [
