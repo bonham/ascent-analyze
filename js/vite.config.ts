@@ -49,7 +49,11 @@ export default defineConfig({
           '@garmin/fitsdk': ['@garmin/fitsdk'],
           readDroppedFile: ['@/lib/fileReader/readDroppedFile'],
         }
-      }
+      },
+      external: [
+        'src/__tests__',
+      ],
+
     }
   }
 })
