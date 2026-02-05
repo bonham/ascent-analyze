@@ -375,7 +375,7 @@ onMounted(() => {
           const client = event.touches[0];
           emitXPosition(canvas, client.clientX)
 
-          mylog.value = "-- cleared --"
+          //mylog.value = "-- cleared --"
 
         } else if (event.touches.length === 2) {
 
