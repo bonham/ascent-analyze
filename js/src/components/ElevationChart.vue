@@ -24,12 +24,13 @@ const ZOOM_SENSITIVITY = 0.001
 
 // 👇 Define props using defineProps
 const props = defineProps<{
-  elevationData: number[] | null;
+  elevationData: number[] | null; // the data
   overlayIntervals: number[][]; // List of x axis index intervals to draw in different color ( virtual index )
-  pointDistance: number;
+  pointDistance: number; // distance of points
   cursorIndex: number | null; // Vertical line cursor index value
 }>();
 
+// Start and end index of the elevation data
 const baseInterval = computed((): DataInterval | null => {
   const edata = props.elevationData
   if (edata === null) return null
@@ -45,11 +46,12 @@ const emit = defineEmits<{
 }>();
 
 /****** Refs *****/
-const canvasRef = ref<HTMLCanvasElement | null>(null);// 👇 Canvas reference
-const viewPortRef = ref<DataInterval | null>(null)
+const canvasRef = ref<HTMLCanvasElement | null>(null);// Canvas reference
+const viewPortRef = ref<DataInterval | null>(null) // zoom state / visible part of the chart
 
 /***   *****  */
 let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance holder
+
 
 /** 
  * Trigger chart update when trackSegmentInd or overlayIntervals change
@@ -62,6 +64,10 @@ let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance 
  * - chartInstance
  */
 let initialUpdateRun = true
+// watcher depends on
+// - elevationData ( => baseInterval )
+// - overlayIntervals
+// - viewPortRef
 watchEffect(
   async () => {
     const overlayIntervals = props.overlayIntervals
@@ -303,6 +309,7 @@ onMounted(() => {
   let oldWheelHandler: ((event: WheelEvent) => void) | undefined
   let oldMouseMoveHandler: ((event: MouseEvent) => void) | undefined
 
+  // Handle change of elevation data 
   watch(baseInterval, (newInterval) => {
 
     if (newInterval !== null) {
@@ -314,6 +321,10 @@ onMounted(() => {
         canvas.removeEventListener('mousemove', oldMouseMoveHandler)
       }
 
+      // reset zoomstate
+      if (props.elevationData) {
+        viewPortRef.value = { start: 0, end: props.elevationData.length - 1 }
+      }
       const zoomState = new ZoomPanState(ZOOM_SENSITIVITY, newInterval)
 
 
