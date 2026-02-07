@@ -25,11 +25,9 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
       const fr = new FileReader()
       fr.addEventListener('load', () => {
         if (fr.result !== null && fr.result instanceof ArrayBuffer) {
-          console.log("ArrayBuffer read, try to decode as fit file")
 
           const buf = Buffer.from(fr.result)
           if (FitFile.isFit(buf)) {
-            console.log("File is fit file")
             const fitFile = new FitFile(buf)
             const segments = fitFile.getRecordMessageList(+Infinity) // join all segments to one
             if (segments.length < 1) {

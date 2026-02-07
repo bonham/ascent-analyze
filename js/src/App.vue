@@ -1,24 +1,27 @@
 <script setup lang="ts">
 import MapView from '@/components/MapView.vue';
 import ElevationChart from '@/components/ElevationChart.vue';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
 import { makeEquidistantTrackAkima } from '@/lib/InterpolateSegment';
-import type { FeatureCollection, Feature, MultiLineString } from 'geojson';
+import type { FeatureCollection, Feature, MultiLineString, GeoJsonProperties, LineString } from 'geojson';
 import DropField from '@/components/DropField.vue';
 import DropPanel from '@/components/DropPanel.vue';
 import { analyzeAscent } from '@/lib/analyzeAscent'
 import { extractFirstSegmentFirstTrack } from '@/lib/app/extractFirstSegmentFirstTrack';
 import { Track2GeoJson } from '@/lib/Track2GeoJson';
 import { readDroppedFile } from '@/lib/fileReader/readDroppedFile';
+import type { IntervalDetail } from './types/IntervalDetails';
+import { debounce } from 'lodash';
 
 
 const START_TRIGGER_GRADIENT = 5 // in percent
 const STOP_TRIGGER_GRADIENT = 1
 const WINDOW_SIZE_METERS = 500; // in index numbers 
-const POINT_DISTANCE = 100; // Distance in meters for equidistant points
-//const ZOOMWINDOW = 31 // in index numbers
+const POINT_DISTANCE = 10; // Distance in meters for equidistant points
+const DEBOUNCE_DELAY = 600; // debounce of user input
+const MIN_WINDOW_WIDTH = 20; // Minimum points in window
 
 const featureCollection = ref<FeatureCollection>({ type: "FeatureCollection", features: [] })
 const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
@@ -29,20 +32,14 @@ const zoomMapOnUpdate = ref(false)
 const windowSizeMeters = ref(WINDOW_SIZE_METERS)
 const startGradient = ref(START_TRIGGER_GRADIENT)
 const stopGradient = ref(STOP_TRIGGER_GRADIENT)
+const intervalDetails = ref<IntervalDetail[]>([])
+const overlayLineStringFeature = ref<Feature<MultiLineString> | null>(null)
+const slopeIntervals = ref<[number, number][]>([])
+const windowTooSmall = ref(false)
 
-const windowSizePoints = computed(() => {
-  const v = Math.round(windowSizeMeters.value / POINT_DISTANCE)
-  return v < 2 ? 2 : v // minimum window size is 2 points
-})
 
-const startThreshold_m = computed(() => {
-  // convert from gradient percent to meters
-  return (startGradient.value * windowSizeMeters.value) / 100
-})
-const stopThreshold_m = computed(() => {
-  // convert from gradient percent to meters
-  return (stopGradient.value * windowSizeMeters.value) / 100
-})
+// Computation chain
+// featureCollection -> trackSegmentIndexed -> lineStringFeature
 
 // computed
 const trackSegmentIndexed = computed(() => {
@@ -69,10 +66,6 @@ const lineStringFeature = computed(() => {
 // computed
 const elevationData = computed(() => elevationChartSegment.value?.getSegment().map((_) => _.elevation) ?? null)
 
-// computed
-const slopeIntervals = computed<[number, number][]>(() =>
-  analyzeAscent(trackSegmentIndexed.value.getSegment(), startThreshold_m.value, stopThreshold_m.value, windowSizePoints.value)
-)
 const tableHighlightIndex = computed(() => {
   if (tableHighlightXValue.value === null) {
     return null
@@ -89,10 +82,13 @@ const tableHighlightIndex = computed(() => {
 /**
  * Details of slope intervals for table display
  */
-const intervalDetails = computed(() => {
-  return slopeIntervals.value.map((intv, idx) => {
-    const start = trackSegmentIndexed.value.get(intv[0])
-    const end = trackSegmentIndexed.value.get(intv[1])
+const updateIntervalDetails = (
+  slopeIntervals: [number, number][],
+  trackSegmentIndexed: TrackSegmentIndexed
+) => {
+  const tmpDetails = slopeIntervals.map((intv, idx) => {
+    const start = trackSegmentIndexed.get(intv[0])
+    const end = trackSegmentIndexed.get(intv[1])
     const dist = (end.distanceFromStart - start.distanceFromStart)
     const elevGain = end.elevation - start.elevation
     const avgGradient = (elevGain / dist) * 100
@@ -106,19 +102,23 @@ const intervalDetails = computed(() => {
       averageGradient_percent: avgGradient
     }
   })
-})
+  intervalDetails.value = tmpDetails
+}
+
 
 /**
  * Overlay line string feature for showing on map
  */
-const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() => {
+const updateOverlayLineStringFeature = (
+  slopeIntervals: [number, number][],
+  lineStringFeature: Feature<LineString, GeoJsonProperties>
+) => {
 
-  if (lineStringFeature.value === null) {
-    return null
-  } else {
 
-    const coord = lineStringFeature.value.geometry.coordinates
-    const mlsCoordinates = slopeIntervals.value.map(
+  if (lineStringFeature !== null) {
+
+    const coord = lineStringFeature.geometry.coordinates
+    const mlsCoordinates = slopeIntervals.map(
       (intv) => coord.slice(intv[0], intv[1] + 1)
     )
 
@@ -132,9 +132,68 @@ const overlayLineStringFeature = computed<Feature<MultiLineString> | null>(() =>
       properties: {},
       geometry: multiLineString
     }
-    return multiLineStringFeature
+
+    // set reactive property
+    overlayLineStringFeature.value = multiLineStringFeature
   }
-})
+}
+
+/** Watch change of computed refs */
+watch([
+  () => startGradient.value,
+  () => stopGradient.value,
+  () => windowSizeMeters.value,
+  () => trackSegmentIndexed.value,
+  () => lineStringFeature.value
+], debounce((newValues) => {
+
+  const [
+    newStartGradient,
+    newStopGradient,
+    newWindowSizeMeters,
+    newTrackSegmentIndexed,
+    newLineStringFeature
+  ] = newValues
+
+  // ----- Prep calculations
+  const windowSizePoints = Math.round(newWindowSizeMeters / POINT_DISTANCE)
+  const startThreshold_m = (newStartGradient * newWindowSizeMeters) / 100 // convert from gradient percent to meters
+  const stopThreshold_m = (newStopGradient * newWindowSizeMeters) / 100 // convert from gradient percent to meters
+
+  let newSlopeIntervals: [number, number][]
+
+  if (windowSizePoints < MIN_WINDOW_WIDTH) {
+    // Window too small
+    // console.error(`Window has too few points: ${windowSizePoints}`)
+    windowTooSmall.value = true
+    newSlopeIntervals = []
+
+  } else {
+    // window ok
+    windowTooSmall.value = false
+
+    if (!newStartGradient || !newStopGradient || !windowSizePoints) {
+
+      // any field empty
+      newSlopeIntervals = []
+
+    } else {
+      newSlopeIntervals = analyzeAscent(
+        trackSegmentIndexed.value.getSegment(),
+        startThreshold_m,
+        stopThreshold_m,
+        windowSizePoints
+      )
+    }
+  }
+
+  // update reactive properties
+  slopeIntervals.value = newSlopeIntervals
+  updateIntervalDetails(newSlopeIntervals, newTrackSegmentIndexed)
+  updateOverlayLineStringFeature(newSlopeIntervals, newLineStringFeature)
+
+}, DEBOUNCE_DELAY))
+
 
 /** Main trigger */
 initialLoad().catch((err) => {
@@ -153,6 +212,7 @@ async function initialLoad(): Promise<void> {
 
 async function processUploadFiles(files: FileList) {
   zoomMapOnUpdate.value = true
+  slopeIntervals.value = [] // important, because otherwise we have slopes from previous track drawn ... ( and leads to index out of bound errors)
   featureCollection.value = await readDroppedFile(files)
   elevationChartSegment.value = trackSegmentIndexed.value
 }
@@ -207,29 +267,7 @@ onUnmounted(() => {
         @highlight-xvalue="elevationChartMouseXValue = $event; tableHighlightXValue = $event"
         :point-distance=POINT_DISTANCE />
     </div>
-    <div class="row my-3">
-      <table class="table table-sm table-bordered smallfont">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Start (km)</th>
-            <th>Length (km)</th>
-            <th>Elev. Gain (m)</th>
-            <th>Grad (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in intervalDetails" :key="item.id"
-            :class="{ 'table-warning': item.id === tableHighlightIndex }">
-            <td>{{ item.id }}</td>
-            <td>{{ item.start_distance_m / 1000 }}</td>
-            <td>{{ item.interval_size_m / 1000 }}</td>
-            <td>{{ item.elevationGain_m.toFixed(0) }}</td>
-            <td>{{ item.averageGradient_percent.toFixed(1) }}%</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!---->
     <form class="row mb-3 g-2">
       <div class="col">
         <div class="input-group">
@@ -245,11 +283,37 @@ onUnmounted(() => {
       </div>
       <div class="col">
         <div class="input-group">
-          <span class="input-group-text smallfont">Window</span>
-          <input type="text" class="form-control smallfont" v-model="windowSizeMeters">
+          <span class="input-group-text smallfont">Window (m)</span>
+          <input type="text" class="form-control smallfont" :class="{ 'is-invalid': windowTooSmall }"
+            v-model="windowSizeMeters">
+          <div class="invalid-feedback smallfont"> Value too small</div>
         </div>
       </div>
     </form>
+    <!---->
+    <div class="row my-3">
+      <table class="table table-sm table-bordered smallfont">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Start (km)</th>
+            <th>Length (km)</th>
+            <th>Elev. Gain (m)</th>
+            <th>Grad (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in intervalDetails" :key="item.id"
+            :class="{ 'table-warning': item.id === tableHighlightIndex }">
+            <td>{{ item.id }}</td>
+            <td>{{ (item.start_distance_m / 1000).toFixed(1) }}</td>
+            <td>{{ (item.interval_size_m / 1000).toFixed(1) }}</td>
+            <td>{{ item.elevationGain_m.toFixed(0) }}</td>
+            <td>{{ item.averageGradient_percent.toFixed(1) }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div> <!-- Container -->
   <div v-if="showScrollHint" class="row text-center scroll-indicator">
     <div class="col-3"></div>

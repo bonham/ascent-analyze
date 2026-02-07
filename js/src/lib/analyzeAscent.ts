@@ -62,14 +62,21 @@ export function analyzeAscent(
       // peak is reached - slope ends at peak
       if (thisPoint.elevation < maxElevationInterval) {
         hillStopIdx = indexMaxElevation
-        // otherwise - solpe ends at window start
+        // otherwise - solpe ends at point with max elevation
       } else {
-        hillStopIdx = windowStartIdx
+        hillStopIdx = indexMaxElevation
       }
 
       hillStarted = false
       if (hillStartIdx === null) { throw new Error("Hill start is null") }
       intervals.push([hillStartIdx, hillStopIdx])
+      // advance the window to then end of the found interval
+      //const windowStartIdx = idx - windowSize + 1
+      idx = hillStopIdx + windowSize - 2 // -2 because in next loop there will be an increment
+      // reset finding values
+      hillStartIdx = null
+      hillStopIdx = null
+
     }
   }
   return intervals

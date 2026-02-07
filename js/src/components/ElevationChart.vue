@@ -2,7 +2,6 @@
   <div class="chart-container px-1">
     <canvas ref="canvasRef"></canvas>
   </div>
-  <div>{{ mylog }}</div>
 </template>
 
 <script setup lang="ts">
@@ -48,7 +47,6 @@ const emit = defineEmits<{
 /****** Refs *****/
 const canvasRef = ref<HTMLCanvasElement | null>(null);// 👇 Canvas reference
 const viewPortRef = ref<DataInterval | null>(null)
-const mylog = ref<string>("");
 
 /***   *****  */
 let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance holder
@@ -136,13 +134,16 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
   for (const interval of intervals) {
     const [start, end] = interval
     if (start >= sourceLength) {
-      throw new Error(`Interval start value ${start} is out of bound of sourceSegment with length ${length}`)
+      console.error(`Interval start value ${start} is out of bound of sourceSegment with length ${sourceLength}`)
+      return []
     }
     if (end >= sourceLength) {
-      throw new Error(`Interval end value ${end} is out of bound of sourceSegment with length ${length}`)
+      console.error(`Interval end value ${end} is out of bound of sourceSegment with length ${length}`)
+      return []
     }
     if (start >= end) {
-      throw new Error(`Interval start value ${start} not smaller than end value ${end}`)
+      console.error(`Interval start value ${start} not smaller than end value ${end}`)
+      return []
     }
     for (let i = start; i <= end; i++) {
       resultArray[i] = baseData[i]
@@ -252,6 +253,9 @@ onMounted(() => {
           radius: 2,
           pointStyle: 'circle'
         },
+        line: {
+          tension: 0.2
+        }
       },
       transitions: {
         scroll_update: {
@@ -375,8 +379,6 @@ onMounted(() => {
           const client = event.touches[0];
           emitXPosition(canvas, client.clientX)
 
-          //mylog.value = "-- cleared --"
-
         } else if (event.touches.length === 2) {
 
           if (!chartInstance) return
@@ -391,7 +393,6 @@ onMounted(() => {
           tpc.setPoints(p0, x0, p1, x1)
           tpc.setPixelStartInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
 
-          mylog.value = `ts p0=${p0.toFixed(0)} x0=${x0.toFixed(0)} p1=${p1.toFixed(0)} x1=${x1.toFixed(0)}`
         } else {
           return
         }
@@ -415,11 +416,6 @@ onMounted(() => {
           tpc.setPixelPinchedInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
           const newInterval = tpc.getChartPinchedInterval()
           touchEventHandler(newInterval, zoomState, updateChartFn)
-
-          mylog.value = (`sf=${tpc.scaleFactor.toFixed(1)} ppd=${tpc.pixelPanDelta.toFixed(1)} cpd=${tpc.chartpanDelta.toFixed(1)} cpm=${tpc.chartPincedMid.toFixed(1)} ` +
-            `zf=${tpc.zoomFactor.toFixed(1)} pinchedI=${tpc.pixelPinchedInterval[0].toFixed(0)},` +
-            ` ${tpc.pixelPinchedInterval[1].toFixed(0)} chartPinchedI=${newInterval.start.toFixed(0)},${newInterval.end.toFixed(0)} ` +
-            `_curI=${zoomState._currentInterval.start.toFixed(0)},${zoomState._currentInterval.end.toFixed(0)}`)
         } else {
           return
         }
