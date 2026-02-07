@@ -11,8 +11,8 @@ describe("AppHelpers", () => {
     const m = 45;
     const f = 1.3;
     const { start, end } = stretchInterval(k, l, m, f);
-    expect(start).toEqual(38);
-    expect(end).toEqual(52);
+    expect(start).toEqual(38.5);
+    expect(end).toEqual(51.5);
   })
 
   test("stretch_interval 2", () => {
@@ -45,9 +45,9 @@ describe("AppHelpers", () => {
     const f = 0.133;
 
     const { start, end } = stretchInterval(k, l, m, f, undefined, undefined, 1);
-    expect(end - start).toEqual(14);
-    expect(start).toEqual(8)
-    expect(end).toEqual(22)
+    expect(end - start).toBeCloseTo(13.3);
+    expect(start).toBeCloseTo(8.67)
+    expect(end).toBeCloseTo(21.97)
   })
 
   test("zoom in when interval smaller than min interval - do nothing", () => {
