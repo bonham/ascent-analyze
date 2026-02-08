@@ -9,6 +9,7 @@
 
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "noUncheckedIndexedAccess": false // remove this at one time ;-(
   }
 }

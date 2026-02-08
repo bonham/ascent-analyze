@@ -40,8 +40,8 @@ export function analyzeAscent(
     if (windowSize < 2) return [] // no analysis possible)
     const windowStartIdx = idx - windowSize + 1
 
-    const windowStartPoint = seg[windowStartIdx]
-    const windowEndPoint = seg[idx]
+    const windowStartPoint = seg[windowStartIdx]! // loop bounds guarantee it
+    const windowEndPoint = seg[idx]! // loop bounds guarantee it
     const elevationDelta = windowEndPoint.elevation - windowStartPoint.elevation
 
     // hill has not started yet, check if it starts here

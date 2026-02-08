@@ -87,7 +87,10 @@ watchEffect(
       return
     }
 
-
+    if (chartInstance.data.datasets[0] === undefined || chartInstance.data.datasets[1] === undefined) {
+      console.log("Chart has not sufficient datasets")
+      return
+    }
     chartInstance.data.datasets[0].data = props.elevationData
     chartInstance.data.labels = calcLabels(props.elevationData.length)
 
@@ -139,6 +142,14 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
 
   for (const interval of intervals) {
     const [start, end] = interval
+    if (start === undefined) {
+      console.error(`Start is not defined`)
+      return []
+    }
+    if (end === undefined) {
+      console.error(`End is not defined`)
+      return []
+    }
     if (start >= sourceLength) {
       console.error(`Interval start value ${start} is out of bound of sourceSegment with length ${sourceLength}`)
       return []
