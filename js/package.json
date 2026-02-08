@@ -13,7 +13,8 @@
     "test": "vitest",
     "build-only": "vite build --base=/larampa/",
     "type-check": "vue-tsc --build",
-    "lint": "eslint . --fix",
+    "type-check-strict": "vue-tsc -p tsconfig.app.json --noEmit --noUncheckedIndexedAccess",
+    "lint": "eslint .",
     "format": "prettier --write src/"
   },
   "dependencies": {

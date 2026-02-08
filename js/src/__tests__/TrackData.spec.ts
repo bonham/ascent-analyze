@@ -44,8 +44,8 @@ describe("TrackSegmentIndexed", () => {
   test("Standard", () => {
     const tsi = new TrackSegmentIndexed(track1, 100)
     expect(tsi.getSegment()).toHaveLength(10)
-    expect(tsi.getSegment()[0].distanceFromStart).toBe(0)
-    expect(tsi.getSegment()[9].distanceFromStart).toBe(900)
+    expect(tsi.getSegment()[0]!.distanceFromStart).toBe(0)
+    expect(tsi.getSegment()[9]!.distanceFromStart).toBe(900)
     expect(tsi.minIndex()).toBe(0)
     expect(tsi.maxIndex()).toBe(9)
     expect(tsi.get(2)).toEqual({ lat: 3, lon: 3.2, elevation: 30, distanceFromStart: 200 })
@@ -58,7 +58,7 @@ describe("TrackSegmentIndexed", () => {
     const initial = new TrackSegmentIndexed(track1, 100)
     const tsi = initial.slice(2, 5)
     expect(tsi.getSegment()).toHaveLength(3)
-    expect(tsi.getSegment()[0].distanceFromStart).toBe(200)
+    expect(tsi.getSegment()[0]!.distanceFromStart).toBe(200)
 
     expect(tsi.minIndex()).toBe(2)
     expect(tsi.maxIndex()).toBe(4)
