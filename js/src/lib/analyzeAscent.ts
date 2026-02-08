@@ -1,9 +1,23 @@
+
 import type { TrackSegment } from '@/lib/TrackData'
 
 const START_TRIGGER_DELTA = 25
 const STOP_TRIGGER_DELTA = 5
 const WINDOW_SIZE = 5
 
+/**
+ * Analyzes elevation data in a track segment to detect and locate ascents.
+ * The function identifies consecutive slope sections by comparing elevation changes
+ * within a sliding window. It returns the start and stop indices of each detected ascent,
+ * where the start is marked by the minimum elevation point and the stop by the maximum
+ * elevation point within the window when the slope triggers are exceeded.
+ *
+ * @param seg - The track segment containing elevation data to analyze
+ * @param startTrigger - Elevation gain threshold in meters within the window to trigger ascent detection 
+ * @param stopTrigger - Elevation gain threshold in meters within the window to trigger ascent termination 
+ * @param windowSize - Size of the sliding window in number of track points 
+ * @returns An array of [startIndex, stopIndex] tuples representing the intervals of detected ascents
+ */
 export function analyzeAscent(
   seg: TrackSegment,
   startTrigger = START_TRIGGER_DELTA,
@@ -20,14 +34,15 @@ export function analyzeAscent(
 
   const intervals: [number, number][] = []
 
+  // Sliding window loop
   for (let idx = windowSize - 1; idx < seg.length; idx++) {
 
     if (windowSize < 2) return [] // no analysis possible)
     const windowStartIdx = idx - windowSize + 1
 
-    const lastPoint = seg[windowStartIdx]
-    const thisPoint = seg[idx]
-    const elevationDelta = thisPoint.elevation - lastPoint.elevation
+    const windowStartPoint = seg[windowStartIdx]
+    const windowEndPoint = seg[idx]
+    const elevationDelta = windowEndPoint.elevation - windowStartPoint.elevation
 
     // hill has not started yet, check if it starts here
     if (!hillStarted) {
@@ -60,7 +75,7 @@ export function analyzeAscent(
       const maxElevationInterval = seg[indexMaxElevation].elevation
 
       // peak is reached - slope ends at peak
-      if (thisPoint.elevation < maxElevationInterval) {
+      if (windowEndPoint.elevation < maxElevationInterval) {
         hillStopIdx = indexMaxElevation
         // otherwise - solpe ends at point with max elevation
       } else {
