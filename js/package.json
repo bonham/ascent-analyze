@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "run-s type-check \"build-only {@}\" --",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest --run",
     "build-only": "vite build --base=/larampa/",
     "type-check": "vue-tsc --build",
     "type-check-strict": "vue-tsc -p tsconfig.app.json --noEmit --noUncheckedIndexedAccess",
