@@ -106,7 +106,7 @@ class AbstractMessageList<T extends (BaseMessage | RecordMessage | EventMessage)
   isSortedByTime() {
     const timestamps = this.getDateTimes();
     for (let i = 1; i < timestamps.length; i += 1) {
-      if (timestamps[i - 1] > timestamps[i]) {
+      if (timestamps[i - 1]! > timestamps[i]!) {
         return false;
       }
     }
@@ -200,7 +200,7 @@ class StartStopList {
   private nextStartEventIndex(startIndex: number) {
     const eventMsgList = this.eventMessageList.getMessages();
     for (let i = startIndex; i < eventMsgList.length; i += 1) {
-      const eventMessage = eventMsgList[i];
+      const eventMessage = eventMsgList[i]!;
 
       if (eventMessage.m.eventType === 'start') {
         return i;
@@ -212,7 +212,7 @@ class StartStopList {
   private nextStopEventIndex(startIndex: number) {
     const eventMsgList = this.eventMessageList.getMessages();
     for (let i = startIndex; i < eventMsgList.length; i += 1) {
-      const eventMessage = eventMsgList[i];
+      const eventMessage = eventMsgList[i]!;
       const { eventType } = eventMessage.m;
       if (eventType === 'stop' || eventType === 'stopAll') {
         return i;

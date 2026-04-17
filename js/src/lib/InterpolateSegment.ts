@@ -12,7 +12,7 @@ function makeEquidistantTrackAkima(coords: TrackSegment, interval: number): Trac
   let totalDist = 0;
 
   for (let i = 1; i < coords.length; i++) {
-    totalDist += haversineDistance(coords[i - 1], coords[i]);
+    totalDist += haversineDistance(coords[i - 1]!, coords[i]!);
     distances.push(totalDist);
   }
 
@@ -26,7 +26,7 @@ function makeEquidistantTrackAkima(coords: TrackSegment, interval: number): Trac
   // need to remove from end to start to keep indices valid
   const duplicateIndices = detectEqualElements(distances);
   for (let i = duplicateIndices.length - 1; i >= 0; i--) {
-    const index = duplicateIndices[i];
+    const index = duplicateIndices[i]!;
     distances.splice(index, 1);
     lats.splice(index, 1);
     lons.splice(index, 1);

@@ -18,7 +18,7 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
 
     // take only first file from input
     const thisFile = files[0]
-    if (thisFile === null) {
+    if (thisFile == null) {
       reject(new Error("File is null"))
     } else {
 
@@ -34,10 +34,10 @@ function readDroppedFile(files: FileList): Promise<FeatureCollection<LineString>
               reject(new Error("No segments found in fit file"))
               return
             }
-            const onlySegment = segments[0]
+            const onlySegment = segments[0]!
             const trackData: TrackSegment = []
             onlySegment.getMessages().forEach((recordMessage) => {
-              const [lat, lon] = recordMessage.getLatLon()
+              const [lat, lon] = recordMessage.getLatLon() as [number, number]
               const fitMsg = recordMessage.getFitMessage()
               const elevation = fitMsg.altitude
               if (elevation === undefined) throw Error("Elevation not defined")

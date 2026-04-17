@@ -91,7 +91,7 @@ onMounted(async () => {
     // Update TrackpointIndex for emitting events
     const points = mapCoordinates.map(coord => {
       // convert to epsg 4326
-      const [lon, lat] = transform(coord, 'EPSG:3857', 'EPSG:4326');
+      const [lon, lat] = transform(coord, 'EPSG:3857', 'EPSG:4326') as [number, number];
       return { lon, lat };
     })
     tpIndex = new TrackPointIndex(points)
@@ -146,7 +146,7 @@ onMounted(async () => {
 
   function handleCoordinateSelectAndMove(evt: MapBrowserEvent<KeyboardEvent | WheelEvent | PointerEvent>) {
     const coordinate = map.getCoordinateFromPixel(evt.pixel);
-    const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326');
+    const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326') as [number, number];
 
     //let minDist = Infinity;
     let closestIndex = -1;

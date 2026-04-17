@@ -163,7 +163,7 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
       return []
     }
     for (let i = start; i <= end; i++) {
-      resultArray[i] = baseData[i]
+      resultArray[i] = baseData[i]!
     }
     maxEnd = Math.max(maxEnd, end)
   }
@@ -398,7 +398,7 @@ onMounted(() => {
         event.preventDefault()
 
         if (event.touches.length === 1) {
-          const client = event.touches[0];
+          const client = event.touches[0]!;
           emitXPosition(canvas, client.clientX)
 
         } else if (event.touches.length === 2) {
@@ -408,12 +408,12 @@ onMounted(() => {
 
           tpc.setChartStartInterval(zoomState.getCurrentInterval())
           const x0 = 0
-          const p0 = chartInstance.scales['x'].getPixelForValue(x0)
+          const p0 = chartInstance.scales['x']!.getPixelForValue(x0)
           const x1 = chartInstance.options.scales!['x']!.max as number
-          const p1 = chartInstance.scales['x'].getPixelForValue(x1)
+          const p1 = chartInstance.scales['x']!.getPixelForValue(x1)
 
           tpc.setPoints(p0, x0, p1, x1)
-          tpc.setPixelStartInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
+          tpc.setPixelStartInterval({ start: event.touches[0]!.clientX, end: event.touches[1]!.clientX })
 
         } else {
           return
@@ -428,14 +428,14 @@ onMounted(() => {
 
         if (event.touches.length === 1) {
 
-          const client = event.touches[0];
+          const client = event.touches[0]!;
           emitXPosition(canvas, client.clientX)
 
         } else if (event.touches.length === 2) {
 
           event.preventDefault()
 
-          tpc.setPixelPinchedInterval({ start: event.touches[0].clientX, end: event.touches[1].clientX })
+          tpc.setPixelPinchedInterval({ start: event.touches[0]!.clientX, end: event.touches[1]!.clientX })
           const newInterval = tpc.getChartPinchedInterval()
           touchEventHandler(newInterval, zoomState, updateChartFn)
         } else {
@@ -468,7 +468,7 @@ onMounted(() => {
     const x = clientX - rect.left; // x: pixel distance from left boundary of canvas
     let xValue: number | undefined;
     if (chartInstance) {
-      xValue = chartInstance.scales['x'].getValueForPixel(x);
+      xValue = chartInstance.scales['x']!.getValueForPixel(x);
     }
     if (xValue === undefined) {
       console.warn(`Unable to get xValue from pixel position ${x}`);
@@ -491,7 +491,7 @@ onMounted(() => {
         chartInstance.data.labels.length > 0 &&
         chartInstance.config.plugins
       ) {
-        const pixelX = chartInstance.scales['x'].getPixelForValue(newIndex); // e.g. 'March'
+        const pixelX = chartInstance.scales['x']!.getPixelForValue(newIndex); // e.g. 'March'
         const pluginInstance = verticalLinePlugin;
         if (pluginInstance !== undefined
           && pluginInstance !== null

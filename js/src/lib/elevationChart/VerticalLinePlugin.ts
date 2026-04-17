@@ -49,7 +49,7 @@ function createVerticalLinePlugin() {
         const rect = canvas.getBoundingClientRect();
         if (event.touches.length === 0) return;
         if (event.touches.length > 1) return; // only single touch
-        const client = event.touches[0];
+        const client = event.touches[0]!;
         verticalLinePlugin.mouseX = client.clientX - rect.left;
         //chart.draw(); // Trigger redraw. Clear the line
       });
@@ -64,7 +64,7 @@ function createVerticalLinePlugin() {
         const rect = canvas.getBoundingClientRect();
         if (event.touches.length === 0) return;
         if (event.touches.length > 1) return; // only single touch
-        const client = event.touches[0];
+        const client = event.touches[0]!;
         verticalLinePlugin.mouseX = client.clientX - rect.left;
       });
 
