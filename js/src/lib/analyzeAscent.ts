@@ -52,7 +52,7 @@ export function analyzeAscent(
         // we need to search for the point with the lowest elevation in the window
         const pointsInInterval = seg.slice(windowStartIdx, idx + 1)
         const indexMinElevationOfSlice = pointsInInterval.reduce(
-          (indexMin, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation < pointsInInterv[indexMin].elevation ? currentIndex : indexMin,
+          (indexMin, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation < pointsInInterv[indexMin]!.elevation ? currentIndex : indexMin,
           0
         )
         // calculate back from slicing
@@ -67,12 +67,12 @@ export function analyzeAscent(
       // find index of point with highest elevation in window
       const pointsInInterval = seg.slice(windowStartIdx, idx + 1)
       const indexMaxElevationOfSlice = pointsInInterval.reduce(
-        (indexMax, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation > pointsInInterv[indexMax].elevation ? currentIndex : indexMax,
+        (indexMax, currentPoint, currentIndex, pointsInInterv) => currentPoint.elevation > pointsInInterv[indexMax]!.elevation ? currentIndex : indexMax,
         0
       )
       // calculate back from slicing
       const indexMaxElevation = indexMaxElevationOfSlice + windowStartIdx
-      const maxElevationInterval = seg[indexMaxElevation].elevation
+      const maxElevationInterval = seg[indexMaxElevation]!.elevation
 
       // peak is reached - slope ends at peak
       if (windowEndPoint.elevation < maxElevationInterval) {

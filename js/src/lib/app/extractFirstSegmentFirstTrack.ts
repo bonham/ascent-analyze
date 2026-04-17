@@ -6,7 +6,7 @@ export function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment
     return []
   } else {
     if (tracks.length > 1) console.log(`Found ${tracks.length} tracks. Only first one will be processed.`)
-    const segments = tracks[0].getSegments()
+    const segments = tracks[0]!.getSegments()
     const numSegments = segments.length
     if (numSegments === 0) {
       console.log("No segments found in track.")
@@ -16,7 +16,7 @@ export function extractFirstSegmentFirstTrack(tracks: TrackData[]): TrackSegment
       if (numSegments > 1) {
         console.log(`Found ${numSegments} segments in track. Only first one will be processed`)
       }
-      return segments[0]
+      return segments[0]!
     }
   }
 }

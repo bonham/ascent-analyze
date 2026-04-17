@@ -17,10 +17,10 @@ function calcColors(points: XYPoint[]): string[] {
   const colorList: string[] = []
 
   for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i];
+    const p1 = points[i]!;
     const { x: x1, y: y1 } = p1;
 
-    const p2 = points[i + 1];
+    const p2 = points[i + 1]!;
     const { x: x2, y: y2 } = p2;
 
     const ascent = (y2 - y1) / (x2 - x1);
@@ -44,6 +44,7 @@ function createAscentFillPlugin(pointDistance: number) {
 
       const yScale = chart.scales.y;
       const xScale = chart.scales.x;
+      if (!xScale || !yScale) return
       if (xScale.type !== 'category') {
         console.log(`Need x-axis scale type 'category', not ${xScale.type}`)
         return
@@ -82,10 +83,10 @@ function createAscentFillPlugin(pointDistance: number) {
       const colors = calcColors(myPoints)
       colors.forEach((color, index) => {
 
-        const x1 = xScale.getPixelForValue(parsedData[index].index);
-        const y1 = yScale.getPixelForValue(parsedData[index].y);
-        const x2 = xScale.getPixelForValue(parsedData[index + 1].index);
-        const y2 = yScale.getPixelForValue(parsedData[index + 1].y);
+        const x1 = xScale.getPixelForValue(parsedData[index]!.index);
+        const y1 = yScale.getPixelForValue(parsedData[index]!.y);
+        const x2 = xScale.getPixelForValue(parsedData[index + 1]!.index);
+        const y2 = yScale.getPixelForValue(parsedData[index + 1]!.y);
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);

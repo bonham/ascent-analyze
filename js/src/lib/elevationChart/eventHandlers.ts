@@ -105,7 +105,7 @@ function calcXPosition(clientX: number, chartInstance: Chart<'line', number[], s
   // Convert pixel position to x-axis value using chart scales
   let xValue: number | undefined;
   if (chartInstance) {
-    xValue = chartInstance.scales['x'].getValueForPixel(canvasPixelX);
+    xValue = chartInstance.scales['x']!.getValueForPixel(canvasPixelX);
   }
   return xValue
 }

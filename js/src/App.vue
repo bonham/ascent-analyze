@@ -87,8 +87,8 @@ const updateIntervalDetails = (
   trackSegmentIndexed: TrackSegmentIndexed
 ) => {
   const tmpDetails = slopeIntervals.map((intv, idx) => {
-    const start = trackSegmentIndexed.get(intv[0])
-    const end = trackSegmentIndexed.get(intv[1])
+    const start = trackSegmentIndexed.get(intv[0])!
+    const end = trackSegmentIndexed.get(intv[1])!
     const dist = (end.distanceFromStart - start.distanceFromStart)
     const elevGain = end.elevation - start.elevation
     const avgGradient = (elevGain / dist) * 100

@@ -76,7 +76,7 @@ class Gpx2Track {
     for (let trackNum = 0; trackNum < features.length; trackNum++) {
       const eSegments: ExtendedSegment[] = []
 
-      const feature = features[trackNum]
+      const feature = features[trackNum]!
       const trackGeometry = feature.geometry
 
       const props = feature.properties
@@ -114,7 +114,7 @@ class Gpx2Track {
 
         // fill extended segments array
         for (let segNum = 0; segNum < trackGeometry.coordinates.length; segNum++) {
-          const coordinatesOfSegment = trackGeometry.coordinates[segNum]
+          const coordinatesOfSegment = trackGeometry.coordinates[segNum]!
 
           let timeStringList: (string[] | undefined[])
           const numPointsInSegment = coordinatesOfSegment.length
@@ -123,7 +123,7 @@ class Gpx2Track {
             validProperties &&
             props !== null && isPropsWithTimes(props) &&
             Array.isArray(props.coordinateProperties.times[segNum]) &&
-            props.coordinateProperties.times[segNum].length === numPointsInSegment
+            (props.coordinateProperties.times[segNum] as string[]).length === numPointsInSegment
           ) {
             timeStringList = (props.coordinateProperties.times[segNum] as string[])
           } else {
@@ -176,7 +176,7 @@ class Gpx2Track {
    */
   trackMetadata(trackNum: number) {
 
-    const trackFt = this.trackFeatures[trackNum]
+    const trackFt = this.trackFeatures[trackNum]!
 
     // extract metadata for track
     const props = trackFt.properties
@@ -193,7 +193,7 @@ class Gpx2Track {
 
     // ascent
     const trkElements = this.trackElements()
-    const trkEle = trkElements[trackNum]
+    const trkEle = trkElements[trackNum]!
 
 
 

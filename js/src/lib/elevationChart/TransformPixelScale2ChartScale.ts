@@ -60,10 +60,10 @@ export class TransformPixelScale2ChartScale {
     const midPixelPinched = intervalMidPoint(this.pixelPinchedInterval)
     const pixelPanDelta = midPixelPinched - midPixelStart
     this.pixelPanDelta = pixelPanDelta
-    const pixelStartLength = this.pixelStartInterval[1] - this.pixelStartInterval[0]
-    const pixelPinchedLength = this.pixelPinchedInterval[1] - this.pixelPinchedInterval[0]
+    const pixelStartLength = this.pixelStartInterval[1]! - this.pixelStartInterval[0]!
+    const pixelPinchedLength = this.pixelPinchedInterval[1]! - this.pixelPinchedInterval[0]!
     let zoomFactor = pixelStartLength / pixelPinchedLength
-    const chartStartLength = this.chartStartInterval[1] - this.chartStartInterval[0]
+    const chartStartLength = this.chartStartInterval[1]! - this.chartStartInterval[0]!
 
     // Zoom
     if (zoomFactor < 1) {
@@ -85,7 +85,7 @@ export class TransformPixelScale2ChartScale {
       chartPinchedMid - chartPinchedLength / 2,
       chartPinchedMid + chartPinchedLength / 2
     ]
-    return { start: chartPinchedInterval[0], end: chartPinchedInterval[1] }
+    return { start: chartPinchedInterval[0]!, end: chartPinchedInterval[1]! }
   }
 
 
@@ -100,5 +100,5 @@ export class TransformPixelScale2ChartScale {
 }
 
 function intervalMidPoint(interval: number[]): number {
-  return (interval[0] + interval[1]) / 2
+  return (interval[0]! + interval[1]!) / 2
 }

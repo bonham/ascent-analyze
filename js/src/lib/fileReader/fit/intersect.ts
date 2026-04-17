@@ -17,11 +17,11 @@ function nextMatchingInterval(
 ) {
   for (let i = startIdx; i < intervals.length; i += 1) {
     // timestamp smaller than interval
-    if (timestamp < intervals[i][0]) {
+    if (timestamp < intervals[i]![0]) {
       return undefined;
     }
     // timestamp is in interval
-    if ((timestamp >= intervals[i][0]) && (timestamp <= intervals[i][1])) {
+    if ((timestamp >= intervals[i]![0]!) && (timestamp <= intervals[i]![1]!)) {
       return i;
     }
     // timestamp could be in next interval
@@ -61,7 +61,7 @@ function intersectRecordMessages(
       if (!msgNotFound[notFoundSegmentIdx]) {
         msgNotFound[notFoundSegmentIdx] = new RecordMessageList([]);
       }
-      msgNotFound[notFoundSegmentIdx].addMessage(m);
+      msgNotFound[notFoundSegmentIdx]!.addMessage(m);
     } else {
       // point was found
       // move search start if needed

@@ -44,8 +44,8 @@ export function joinSegments(
       throw Error('End of last segment did not contain element');
     }
 
-    const [lat1, lon1] = endOfLastSeg.getLatLon();
-    const [lat2, lon2] = startOfCurrentSeg.getLatLon();
+    const [lat1, lon1] = endOfLastSeg.getLatLon() as [number, number];
+    const [lat2, lon2] = startOfCurrentSeg.getLatLon() as [number, number];
     const dist = haversineDistance({ lat: lat1, lon: lon1 }, { lat: lat2, lon: lon2 });
     // console.log("Dist (m)" + dist.toFixed(2))
 

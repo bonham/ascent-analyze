@@ -76,7 +76,7 @@ export class TrackPointIndex {
   getNearestPoint(lookupPoint: Point): Point | null {
     const nidx = this.getNearestIndex(lookupPoint)
     if (nidx === null) return null
-    return this.coordinates[nidx]
+    return this.coordinates[nidx] ?? null
   }
 }
 
