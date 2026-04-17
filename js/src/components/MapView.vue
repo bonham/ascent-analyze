@@ -9,6 +9,7 @@ import Map from 'ol/Map';
 import View from 'ol/View';
 import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
+import ImageTile from 'ol/ImageTile';
 import { fromLonLat, transform } from 'ol/proj';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
 import { TrackPointIndex } from '@/lib/mapView/TrackPointIndex';
@@ -61,7 +62,15 @@ onMounted(async () => {
   map = new Map({
     target: mapContainer.value,
     layers: [
-      new TileLayer({ source: new OSM() }),
+      new TileLayer({
+        source: new OSM({
+          tileLoadFunction: (tile, src) => {
+            const img = (tile as ImageTile).getImage() as HTMLImageElement;
+            img.referrerPolicy = 'strict-origin-when-cross-origin';
+            img.src = src;
+          }
+        })
+      }),
       baseTrackVectorLayer,
       overlayVectorLayer,
       markerLayer
