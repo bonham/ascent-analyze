@@ -9,14 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: js
+        working-directory: .
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "~24"
+          node-version: '~24'
           cache: npm
-          cache-dependency-path: js/package-lock.json
+          cache-dependency-path: ./package-lock.json
       - run: npm ci
       - run: npm run build
 
@@ -25,14 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: js
+        working-directory: .
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "~24"
+          node-version: '~24'
           cache: npm
-          cache-dependency-path: js/package-lock.json
+          cache-dependency-path: ./package-lock.json
       - run: npm ci
       - run: npm run test --run
 
@@ -41,13 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: js
+        working-directory: .
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: "~24"
+          node-version: '~24'
           cache: npm
-          cache-dependency-path: js/package-lock.json
+          cache-dependency-path: ./package-lock.json
       - run: npm ci
       - run: npm run lint
