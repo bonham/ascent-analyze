@@ -73,9 +73,11 @@ Three design principles govern the elevation sync module:
 
 ### Core Library (`src/lib/`)
 
+> **Note on `TrackPoint` naming:** Two distinct types share this name. `TrackData.ts` exports `TrackPoint { lat, lon, elevation }` (raw GPS point). `elevationSync/types.ts` exports `TrackPoint { distance, elevation, lon, lat }` (resampled point with cumulative distance). Components and the cursor sync module use the elevationSync version.
+
 | File                    | Description                                                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `TrackData.ts`          | Core data model — `TrackPoint`, `TrackSegment`, `TrackSegmentIndexed` class with indexed access and distance metadata |
+| `TrackData.ts`          | Core data model. Types: `TrackPoint` (lat/lon/elevation), `TrackPointWithDistance` (adds distanceFromStart), `TrackSegment`, `TrackSegmentWithDistance`. `TrackData` manages multiple segments (`addSegment`, `addPointToSegment`, `getSegments`, `getAllPoints`). `TrackSegmentIndexed` wraps a fixed-distance segment with a virtual/internal index distinction (virtual = user-facing index starting from any offset; internal = zero-based array index), `slice`/`sliceSegment` for range extraction, and a `zoom(midpoint, factor)` function. |
 | `analyzeAscent.ts`      | Climb detection algorithm — sliding window comparing elevation deltas against start/stop gradient thresholds          |
 | `InterpolateSegment.ts` | Resamples a track to equidistant points using Akima spline interpolation (via `commons-math-interpolation`)           |
 | `GeoJsonLoader.ts`      | Converts GeoJSON FeatureCollections into internal `TrackData` objects                                                 |
