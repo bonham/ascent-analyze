@@ -41,9 +41,17 @@ App.vue
   └── Inline table — climb details (start, length, gain, gradient)
 ```
 
-State flows top-down via props. Mouse/hover events flow back up via emits. App.vue routes hover positions between components so that highlighting is synchronized across map, chart, and table.
+State flows top-down via props. Cross-component cursor synchronization uses a shared `CursorSync` instance created by `useCursorSync(points)` in App.vue and passed as a prop to both `MapView` and `ElevationChart`. Components call `cursor.setByDistance()` / `cursor.clear()` directly — no event bubbling needed.
 
 The Pinia store (`trackStore.ts`) is defined but the app primarily uses local reactive state in App.vue.
+
+### Cursor Sync Design
+
+Three design principles govern the elevation sync module:
+
+- **Resampling stays outside** the module — consumer's responsibility
+- **Gradient colors fed from outside** via `segmentColors` prop
+- **Sync is distance-based** (not index-based), so it works with any point spacing
 
 ## Source File Reference
 
@@ -56,12 +64,12 @@ The Pinia store (`trackStore.ts`) is defined but the app primarily uses local re
 
 ### Components (`src/components/`)
 
-| File                 | Description                                                                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `MapView.vue`        | OpenLayers map displaying the GPS track (blue line), detected climbs (red overlay), and a position marker         |
-| `ElevationChart.vue` | Chart.js line chart showing the elevation profile with zoom, pan, touch gestures, and climb interval highlighting |
-| `DropPanel.vue`      | File upload button wrapper                                                                                        |
-| `DropField.vue`      | Drag-and-drop file handler, emits `files-dropped` event                                                           |
+| File                 | Description                                                                                                                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MapView.vue`        | OpenLayers map displaying the GPS track (blue line), detected climbs (red overlay), and a position marker. Accepts `cursor: CursorSync` and `points: TrackPoint[]`; wires map `pointermove`/`pointerout` to cursor sync internally |
+| `ElevationChart.vue` | Chart.js elevation profile with zoom, pan, touch gestures, and climb interval highlighting. Accepts `cursor: CursorSync`; hover calls `cursor.setByDistance()` directly                                                            |
+| `DropPanel.vue`      | File upload button wrapper                                                                                                                                                                                                         |
+| `DropField.vue`      | Drag-and-drop file handler, emits `files-dropped` event                                                                                                                                                                            |
 
 ### Core Library (`src/lib/`)
 
@@ -84,6 +92,15 @@ The Pinia store (`trackStore.ts`) is defined but the app primarily uses local re
 | `gpx2GeoJson.ts`                   | Wrapper — converts a GPX string to a GeoJSON FeatureCollection                      |
 | `extractFirstSegmentFirstTrack.ts` | Extracts the first segment from the first track in a `TrackData` array              |
 | `transformHelpers.ts`              | `SegmentTransformManager` — manages zoom/pan viewport state for the elevation chart |
+
+### Elevation Sync Module (`src/lib/elevationSync/`)
+
+| File                  | Description                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `types.ts`            | `TrackPoint` interface (distance, elevation, lon, lat) and `CursorSync` interface                                                                |
+| `useCursorSync.ts`    | Composable — single source of truth for hover position; `distance` ref + `nearestIndex` computed (binary search) + `setByDistance()` / `clear()` |
+| `cursorToInterval.ts` | Helper — maps `cursor.nearestIndex` to a 1-based interval ID by checking against index-based `slopeIntervals`                                    |
+| `index.ts`            | Barrel export                                                                                                                                    |
 
 ### Elevation Chart Utilities (`src/lib/elevationChart/`)
 
@@ -135,15 +152,18 @@ The Pinia store (`trackStore.ts`) is defined but the app primarily uses local re
 
 ### Tests (`src/__tests__/`)
 
-| File                          | Description                                  |
-| ----------------------------- | -------------------------------------------- |
-| `App.spec.ts`                 | App component smoke test                     |
-| `TrackData.spec.ts`           | TrackData and TrackSegmentIndexed unit tests |
-| `Track2GeoJson.spec.ts`       | GeoJSON conversion tests                     |
-| `TpIndex.spec.ts`             | TrackPointIndex spatial query tests          |
-| `ZoomState.spec.ts`           | Zoom state calculation tests                 |
-| `transformHelpers.spec.ts`    | Segment transformation tests                 |
-| `detectEqualElements.spec.ts` | Array duplicate detection tests              |
+| File                          | Description                                      |
+| ----------------------------- | ------------------------------------------------ |
+| `App.spec.ts`                 | App component smoke test                         |
+| `TrackData.spec.ts`           | TrackData and TrackSegmentIndexed unit tests     |
+| `Track2GeoJson.spec.ts`       | GeoJSON conversion tests                         |
+| `TpIndex.spec.ts`             | TrackPointIndex spatial query tests              |
+| `ZoomState.spec.ts`           | Zoom state calculation tests                     |
+| `transformHelpers.spec.ts`    | Segment transformation tests                     |
+| `detectEqualElements.spec.ts` | Array duplicate detection tests                  |
+| `useCursorSync.spec.ts`       | CursorSync composable unit tests                 |
+| `cursorToInterval.spec.ts`    | Interval mapping from cursor position tests      |
+| `cursorSyncRendering.spec.ts` | Component rendering with cursor sync integration |
 
 ## Key Algorithms
 
