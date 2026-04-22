@@ -61,10 +61,11 @@ describe('useCursorSync', () => {
 
   it('nearestIndex reacts to distance changes', () => {
     const cursor = withSetup(() => useCursorSync(points))
-    cursor.setByDistance(50)
-    expect(cursor.nearestIndex.value).toBe(1) // |50-100|=50 vs |50-0|=50 → tie, pick 0 or 1; document actual behavior
-    cursor.setByDistance(350)
-    expect(cursor.nearestIndex.value).toBe(3) // |300-350|=50 vs |400-350|=50 → tie; document actual
+    // Tie-breaking: lower index wins when both neighbours are equidistant
+    cursor.setByDistance(50)  // |50-0|=50 vs |100-50|=50 → lower index 0 wins
+    expect(cursor.nearestIndex.value).toBe(0)
+    cursor.setByDistance(350) // |350-300|=50 vs |400-350|=50 → lower index 3 wins
+    expect(cursor.nearestIndex.value).toBe(3)
   })
 
   it('clear() resets distance to null', () => {
@@ -81,12 +82,14 @@ describe('useCursorSync', () => {
     expect(cursor.nearestIndex.value).toBeNull()
   })
 
-  it('distance is readonly — direct mutation not possible via the Ref API', () => {
+  it('distance is readonly — external mutation is silently discarded', () => {
     const cursor = withSetup(() => useCursorSync(points))
-    // distance is a Readonly<Ref>; this verifies it is not writable from outside
-    expect(() => {
-      // @ts-expect-error intentionally writing to readonly ref
+    cursor.setByDistance(100)
+    try {
+      // @ts-expect-error TypeScript prevents this; Vue warns at runtime and discards the write
       cursor.distance.value = 999
-    }).toThrow()
+    } catch { /* some environments throw, others just warn — both are acceptable */ }
+    // The stored value must be unchanged regardless of whether an error was thrown
+    expect(cursor.distance.value).toBe(100)
   })
 })

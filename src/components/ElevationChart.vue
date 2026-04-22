@@ -8,10 +8,10 @@
 import { onMounted, ref, watch, watchEffect, computed } from 'vue';
 //import { createAscentFillPlugin } from '@/lib/AscentFillPlugin';
 import { createVerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
-// import type { VerticalLinePlugin } from '@/lib/elevationChart/VerticalLinePlugin';
 import { ZoomPanState, type DataInterval } from '@/lib/elevationChart/ZoomState';
 import { wheelEventHandler, panEventHandler, calcXPosition, touchEventHandler } from '@/lib/elevationChart/eventHandlers';
 import { TransformPixelScale2ChartScale } from '@/lib/elevationChart/TransformPixelScale2ChartScale';
+import type { TrackPoint, CursorSync } from '@/lib/elevationSync/types';
 
 import { Chart } from 'chart.js/auto';
 
@@ -22,49 +22,42 @@ type TData = number[];
 // parameters
 const ZOOM_SENSITIVITY = 0.001
 
-// 👇 Define props using defineProps
 const props = defineProps<{
-  elevationData: number[] | null; // the data
-  overlayIntervals: number[][]; // List of x axis index intervals to draw in different color ( virtual index )
-  pointDistance: number; // distance of points
-  cursorIndex: number | null; // Vertical line cursor index value
+  points: TrackPoint[] | null;       // track points with distance + elevation; drives the chart
+  overlayIntervals: number[][];      // index-based intervals to highlight in red (climb segments)
+  cursor: CursorSync;                // shared cursor — receives hover position, drives vertical line
 }>();
+
+// Derived elevation array for the chart datasets
+const elevationData = computed(() => props.points?.map(p => p.elevation) ?? null)
 
 // Start and end index of the elevation data
 const baseInterval = computed((): DataInterval | null => {
-  const edata = props.elevationData
+  const edata = elevationData.value
   if (edata === null) return null
-  else {
-    const bi = { start: 0, end: edata.length - 1 }
-    return bi
-  }
+  return { start: 0, end: edata.length - 1 }
 })
 
-const emit = defineEmits<{
-  (e: 'highlight-xvalue', index: number): void;
-  (e: 'viewPort', interval: DataInterval): void; // which part of x-axis is visible
-}>();
-
 /****** Refs *****/
-const canvasRef = ref<HTMLCanvasElement | null>(null);// Canvas reference
-const viewPortRef = ref<DataInterval | null>(null) // zoom state / visible part of the chart
+const canvasRef = ref<HTMLCanvasElement | null>(null); // Canvas reference
+const viewPortRef = ref<DataInterval | null>(null)     // zoom state / visible part of the chart
 
-/***   *****  */
 let chartInstance: Chart<TType, TData, TLabel> | null = null; // Chart instance holder
 
 
-/** 
- * Trigger chart update when trackSegmentInd or overlayIntervals change
- * Depends on reactive variables:
+/**
+ * Trigger chart update when points, overlayIntervals, or viewPortRef change.
+ *
+ * Reactive dependencies:
+ * - elevationData  (derived from props.points)
  * - props.overlayIntervals
- * - elevationData
  * - viewPortRef
- * 
- * Also needs these global vars
+ *
+ * Non-reactive dependency (module-level):
  * - chartInstance
  */
 let initialUpdateRun = true
-// watcher depends on
+// watcher depends on:
 // - elevationData ( => baseInterval )
 // - overlayIntervals
 // - viewPortRef
@@ -73,13 +66,13 @@ watchEffect(
     const overlayIntervals = props.overlayIntervals
 
     // set basic chart data
-    if (props.elevationData === null) {
+    if (elevationData.value === null) {
       console.log("Elevation data is null")
       return
     }
 
-    if (viewPortRef.value === null) {// initial
-      viewPortRef.value = { start: 0, end: props.elevationData.length - 1 }
+    if (viewPortRef.value === null) { // initial
+      viewPortRef.value = { start: 0, end: elevationData.value.length - 1 }
     }
 
     if (chartInstance === null) {
@@ -91,11 +84,12 @@ watchEffect(
       console.log("Chart has not sufficient datasets")
       return
     }
-    chartInstance.data.datasets[0].data = props.elevationData
-    chartInstance.data.labels = calcLabels(props.elevationData.length)
+
+    chartInstance.data.datasets[0].data = elevationData.value
+    chartInstance.data.labels = calcLabels()
 
     // set overlay data
-    const overlayLineData = genOverlayData(props.elevationData, overlayIntervals)
+    const overlayLineData = genOverlayData(elevationData.value, overlayIntervals)
     chartInstance.data.datasets[1].data = overlayLineData
 
     // calc X scale start and stop index from viewport
@@ -103,14 +97,14 @@ watchEffect(
       chartInstance.options.scales['x'] = getScaleX(viewPortRef.value.start, viewPortRef.value.end)
     }
 
-    // calc Y scale min max from visible data
-    const maxY = Math.max(...props.elevationData)
-    const minY = Math.min(...props.elevationData)
+    // calc Y scale min/max from visible data
+    const maxY = Math.max(...elevationData.value)
+    const minY = Math.min(...elevationData.value)
     if (chartInstance.options.scales !== undefined) {
       chartInstance.options.scales['y'] = getScaleY(minY, maxY)
     }
 
-    // update overlay intervals
+    // update chart — defer on first run to ensure canvas layout is complete
     if (initialUpdateRun) {
       requestAnimationFrame(() => chartInstance && chartInstance.update('none'))
       console.log("initial run")
@@ -124,15 +118,17 @@ watchEffect(
   }
 );
 
-function calcLabels(length: number) {
-  const myLabels = Array.from({ length }, (_, index) => (index * props.pointDistance / 1000).toFixed(1))
-  return myLabels
+/** Build x-axis labels from actual point distances (km). */
+function calcLabels(): string[] {
+  if (!props.points) return []
+  return props.points.map(p => (p.distance / 1000).toFixed(1))
 }
 
 /**
- * Calculates gapped data for 
- * @param baseData Elevation array
- * @param intervals Intervals of elevation data to show as overlay
+ * Builds a gapped elevation array for the overlay dataset.
+ * Only the index ranges listed in `intervals` are filled; the rest are NaN (no line drawn).
+ * @param baseData  Full elevation array.
+ * @param intervals Index-based [start, end] pairs to highlight.
  */
 function genOverlayData(baseData: number[], intervals: number[][]): number[] {
   const sourceLength = baseData.length
@@ -155,7 +151,7 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
       return []
     }
     if (end >= sourceLength) {
-      console.error(`Interval end value ${end} is out of bound of sourceSegment with length ${length}`)
+      console.error(`Interval end value ${end} is out of bound of sourceSegment with length ${sourceLength}`)
       return []
     }
     if (start >= end) {
@@ -173,8 +169,9 @@ function genOverlayData(baseData: number[], intervals: number[][]): number[] {
 // Plugin to draw vertical line at mouseX
 const verticalLinePlugin = createVerticalLinePlugin()
 
-// Plugin to fill area below chart
+// Plugin to fill area below chart (currently disabled — AscentFillPlugin planned separately)
 //const ascentFillPlugin = createAscentFillPlugin(props.pointDistance)
+
 function getScaleX(min: number | undefined, max: number | undefined) {
   const s = {
     title: {
@@ -187,9 +184,9 @@ function getScaleX(min: number | undefined, max: number | undefined) {
   return s
 }
 
-// Calculate min max of y scale
-// - 10 % space above and below max / min of chart
-// - round to next upper 1/10 of range.
+// Calculate min/max of y scale:
+// - 10% padding above and below the data range
+// - rounded to the nearest 10m boundary
 function getScaleY(dataMin: number | undefined, dataMax: number | undefined) {
   let minMaxOpts = {}
   if (dataMin !== undefined && dataMax !== undefined) {
@@ -212,7 +209,6 @@ function getScaleY(dataMin: number | undefined, dataMax: number | undefined) {
 // Initialize chart once on mount
 onMounted(() => {
 
-
   const scales = {
     x: getScaleX(undefined, undefined),
     y: getScaleY(undefined, undefined)
@@ -224,7 +220,6 @@ onMounted(() => {
     console.warn('Canvas unavailable after mount.');
     return;
   }
-
 
   chartInstance = new Chart(canvas, {
 
@@ -287,11 +282,10 @@ onMounted(() => {
   });
 
 
-
   // -------------------- event listeners
 
   // Add event listener for highlighting points
-  // Reminder: touchmove does not work in iphone - getting lags
+  // Reminder: touchmove does not work on iPhone — getting lags
   let isDragging = false
   let scaleXStart: number | undefined = undefined
 
@@ -306,9 +300,6 @@ onMounted(() => {
   })
 
 
-
-
-
   /********************    Zoom handling   ****************************************** */
 
   function updateChartFn(obj: DataInterval): void {
@@ -320,7 +311,7 @@ onMounted(() => {
   let oldWheelHandler: ((event: WheelEvent) => void) | undefined
   let oldMouseMoveHandler: ((event: MouseEvent) => void) | undefined
 
-  // Handle change of elevation data 
+  // Handle change of elevation data: re-register wheel/mousemove handlers with fresh zoom state
   watch(baseInterval, (newInterval) => {
 
     if (newInterval !== null) {
@@ -332,12 +323,11 @@ onMounted(() => {
         canvas.removeEventListener('mousemove', oldMouseMoveHandler)
       }
 
-      // reset zoomstate
-      if (props.elevationData) {
-        viewPortRef.value = { start: 0, end: props.elevationData.length - 1 }
+      // reset zoom state to full range of new data
+      if (elevationData.value) {
+        viewPortRef.value = { start: 0, end: elevationData.value.length - 1 }
       }
       const zoomState = new ZoomPanState(ZOOM_SENSITIVITY, newInterval)
-
 
       /**
        * Handles mouse wheel events for zooming the chart.
@@ -351,7 +341,6 @@ onMounted(() => {
         if (chartInstance === null) throw new Error("chart instance is null while running wheel handler")
         const xPosition = calcXPosition(event.clientX, chartInstance, canvas.getBoundingClientRect().left)
         if (xPosition === undefined) { console.log("xPosition undefined in wheel handler"); return }
-
 
         wheelEventHandler(event.deltaY, xPosition, zoomState, updateChartFn)
 
@@ -379,8 +368,7 @@ onMounted(() => {
         } else {
 
           event.stopPropagation()
-          const clientX = event.clientX
-          emitXPosition(canvas, clientX)
+          notifyCursor(canvas, event.clientX)
 
         }
       }
@@ -399,7 +387,7 @@ onMounted(() => {
 
         if (event.touches.length === 1) {
           const client = event.touches[0]!;
-          emitXPosition(canvas, client.clientX)
+          notifyCursor(canvas, client.clientX)
 
         } else if (event.touches.length === 2) {
 
@@ -429,7 +417,7 @@ onMounted(() => {
         if (event.touches.length === 1) {
 
           const client = event.touches[0]!;
-          emitXPosition(canvas, client.clientX)
+          notifyCursor(canvas, client.clientX)
 
         } else if (event.touches.length === 2) {
 
@@ -447,24 +435,31 @@ onMounted(() => {
 
   /********************************************************************************** */
 
-  function emitXPosition(canvas: HTMLCanvasElement, clientX: number) {
-
-    // Get mouse position relative to canvas
-    const xValueVirtual = clientXtoChartX(canvas, clientX)
-    if (xValueVirtual !== undefined) {
-      // console.log("Mouse move X", x, "Value virtual:", xValueVirtual);
-      emit('highlight-xvalue', xValueVirtual);
+  /**
+   * Convert a clientX pixel position to a chart x-axis index, then look up the
+   * corresponding distance from props.points and push it into the shared cursor.
+   * This replaces the old emit('highlight-xvalue') pattern.
+   */
+  function notifyCursor(canvas: HTMLCanvasElement, clientX: number) {
+    const idx = clientXtoChartX(canvas, clientX)
+    if (idx !== undefined && props.points) {
+      const pt = props.points[Math.round(idx)]
+      if (pt !== undefined) {
+        // console.log("Chart hover — index:", Math.round(idx), "distance:", pt.distance)
+        props.cursor.setByDistance(pt.distance)
+      }
     }
   }
 
   /**
-   * Converts a clientX pixel position (from mouse or touch event) to the corresponding x-axis value on the Chart.js chart.
-   * @param canvas The canvas element of the chart.
+   * Converts a clientX pixel position (from mouse or touch event) to the
+   * corresponding x-axis index value on the Chart.js chart.
+   * @param canvas  The canvas element of the chart.
    * @param clientX The x-coordinate relative to the viewport.
-   * @returns The x-axis value (category index) corresponding to the pixel position, or undefined if not available.
+   * @returns The x-axis index corresponding to the pixel position, or undefined if not available.
    */
-  function clientXtoChartX(canvas: HTMLCanvasElement, clientX: number) {
-    const rect: DOMRect = canvas.getBoundingClientRect(); //  returns a object w information about the size canvas and its position relative to the viewport.
+  function clientXtoChartX(canvas: HTMLCanvasElement, clientX: number): number | undefined {
+    const rect: DOMRect = canvas.getBoundingClientRect(); // size and position of canvas relative to viewport
     const x = clientX - rect.left; // x: pixel distance from left boundary of canvas
     let xValue: number | undefined;
     if (chartInstance) {
@@ -478,32 +473,28 @@ onMounted(() => {
   }
 
   /**
-   * watch vertical cursor external change 
+   * Watch external cursor changes (e.g. map hover) and move the vertical line accordingly.
+   * cursor.nearestIndex is the index into props.points closest to cursor.distance.
    */
   watch(
-    () => props.cursorIndex,
+    () => props.cursor.nearestIndex.value,
     (newIndex) => {
-      //console.log("New index: ", newIndex)
-      // does not work      if (chartInstance !== null) { chartInstance.clear(); chartInstance.render() } // to clear any existing line
+      // console.log("External cursor index:", newIndex)
       if (newIndex === null) return
       if (chartInstance &&
         chartInstance.data.labels &&
         chartInstance.data.labels.length > 0 &&
         chartInstance.config.plugins
       ) {
-        const pixelX = chartInstance.scales['x']!.getPixelForValue(newIndex); // e.g. 'March'
+        const pixelX = chartInstance.scales['x']!.getPixelForValue(newIndex);
         const pluginInstance = verticalLinePlugin;
-        if (pluginInstance !== undefined
-          && pluginInstance !== null
-        ) {
-
+        if (pluginInstance !== undefined && pluginInstance !== null) {
           verticalLinePlugin.mouseX = pixelX;
-          chartInstance.update('none'); // to avoid animation
+          chartInstance.update('none'); // 'none' to avoid animation
         }
       }
     }
   )
-
 
 });
 </script>

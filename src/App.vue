@@ -14,20 +14,18 @@ import { Track2GeoJson } from '@/lib/Track2GeoJson';
 import { readDroppedFile } from '@/lib/fileReader/readDroppedFile';
 import type { IntervalDetail } from './types/IntervalDetails';
 import { debounce } from 'lodash';
+import { useCursorSync, cursorToInterval } from '@/lib/elevationSync';
+import type { TrackPoint } from '@/lib/elevationSync';
 
 
 const START_TRIGGER_GRADIENT = 5 // in percent
 const STOP_TRIGGER_GRADIENT = 1
-const WINDOW_SIZE_METERS = 500; // in index numbers 
+const WINDOW_SIZE_METERS = 500; // in index numbers
 const POINT_DISTANCE = 10; // Distance in meters for equidistant points
 const DEBOUNCE_DELAY = 600; // debounce of user input
 const MIN_WINDOW_WIDTH = 20; // Minimum points in window
 
 const featureCollection = ref<FeatureCollection>({ type: "FeatureCollection", features: [] })
-const elevationChartSegment = ref<TrackSegmentIndexed | null>(null)
-const elevationChartMouseXValue = ref<number | null>(null);
-const mapViewMouseIndexValue = ref<number | null>(null);
-const tableHighlightXValue = ref<number | null>(null);
 const zoomMapOnUpdate = ref(false)
 const windowSizeMeters = ref(WINDOW_SIZE_METERS)
 const startGradient = ref(START_TRIGGER_GRADIENT)
@@ -63,21 +61,21 @@ const lineStringFeature = computed(() => {
   return t2g.toGeoJsonLineStringFeature()
 })
 
-// computed
-const elevationData = computed(() => elevationChartSegment.value?.getSegment().map((_) => _.elevation) ?? null)
+// TrackPoint array derived from the equidistant segment — shared between chart, map, and cursor sync
+const trackPoints = computed<TrackPoint[]>(() =>
+  trackSegmentIndexed.value.getSegment().map(p => ({
+    distance: p.distanceFromStart,
+    elevation: p.elevation,
+    lon: p.lon,
+    lat: p.lat,
+  }))
+)
 
-const tableHighlightIndex = computed(() => {
-  if (tableHighlightXValue.value === null) {
-    return null
-  } else {
-    // find interval containing this index
-    const idx = slopeIntervals.value.findIndex((intv) =>
-      (tableHighlightXValue.value !== null) && (tableHighlightXValue.value >= intv[0]) && (tableHighlightXValue.value <= intv[1])
-    )
-    const returnIndex = idx >= 0 ? idx + 1 : null // return interval id (1-based)
-    return returnIndex
-  }
-})
+// Single shared cursor instance — passed to both MapView and ElevationChart
+const cursor = useCursorSync(trackPoints)
+
+// Table row highlighting: maps cursor position to a 1-based interval ID
+const tableHighlightIndex = cursorToInterval(cursor, slopeIntervals)
 
 /**
  * Details of slope intervals for table display
@@ -113,7 +111,6 @@ const updateOverlayLineStringFeature = (
   slopeIntervals: [number, number][],
   lineStringFeature: Feature<LineString, GeoJsonProperties>
 ) => {
-
 
   if (lineStringFeature !== null) {
 
@@ -163,8 +160,6 @@ watch([
   let newSlopeIntervals: [number, number][]
 
   if (windowSizePoints < MIN_WINDOW_WIDTH) {
-    // Window too small
-    // console.error(`Window has too few points: ${windowSizePoints}`)
     windowTooSmall.value = true
     newSlopeIntervals = []
 
@@ -205,7 +200,6 @@ async function initialLoad(): Promise<void> {
   const geojson = await response.json();
   featureCollection.value = geojson
   zoomMapOnUpdate.value = true
-  elevationChartSegment.value = trackSegmentIndexed.value
 }
 
 /********************** File handling  **************************************/
@@ -214,7 +208,6 @@ async function processUploadFiles(files: FileList) {
   zoomMapOnUpdate.value = true
   slopeIntervals.value = [] // important, because otherwise we have slopes from previous track drawn ... ( and leads to index out of bound errors)
   featureCollection.value = await readDroppedFile(files)
-  elevationChartSegment.value = trackSegmentIndexed.value
 }
 
 
@@ -256,16 +249,12 @@ onUnmounted(() => {
     </nav>
     <DropField @files-dropped="processUploadFiles">
       <div class="row border py-1">
-        <MapView :highlightXpos="elevationChartMouseXValue" :line-string-f="lineStringFeature"
-          :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate"
-          @hover-index="mapViewMouseIndexValue = $event; tableHighlightXValue = $event" />
+        <MapView :cursor="cursor" :points="trackPoints" :line-string-f="lineStringFeature"
+          :overlay-line-string-f="overlayLineStringFeature" :zoom-on-update="zoomMapOnUpdate" />
       </div>
     </DropField>
     <div class="row my-3 py-3 border">
-      <ElevationChart :cursor-index="mapViewMouseIndexValue" :elevation-data="elevationData"
-        :overlay-intervals="slopeIntervals"
-        @highlight-xvalue="elevationChartMouseXValue = $event; tableHighlightXValue = $event"
-        :point-distance=POINT_DISTANCE />
+      <ElevationChart :cursor="cursor" :points="trackPoints" :overlay-intervals="slopeIntervals" />
     </div>
     <!---->
     <form class="row mb-3 g-2">
@@ -334,18 +323,15 @@ onUnmounted(() => {
   bottom: 0px;
   left: 50%;
   width: 100%;
-  /* transform: translateX(-50%); */
   font-size: 2rem;
   color: #6c757d;
   z-index: 1000;
   animation: bounce 2.5s infinite;
   opacity: 0.5;
   pointer-events: none;
-  /* optional: prevents accidental taps */
 }
 
 @keyframes bounce {
-
   0%,
   100% {
     transform: translateX(-50%) translateY(0);
