@@ -131,7 +131,7 @@ onMounted(async () => {
     const coordinate = map.getCoordinateFromPixel(evt.pixel);
     const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326') as [number, number];
 
-    let closestIndex = tpIndex ? (tpIndex.getNearestIndex({ lon, lat }) ?? -1) : -1
+    const closestIndex = tpIndex ? (tpIndex.getNearestIndex({ lon, lat }) ?? -1) : -1
 
     if (closestIndex !== -1 && props.points) {
       const pt = props.points[closestIndex]
