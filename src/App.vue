@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import MapView from '@/components/MapView.vue';
-import ElevationChart from '@/components/ElevationChart.vue';
+import { ElevationChart } from '@la-rampa/elevation-chart';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { GeoJsonLoader } from '@/lib/GeoJsonLoader';
 import { TrackSegmentIndexed } from '@/lib/TrackData'
@@ -14,8 +14,8 @@ import { Track2GeoJson } from '@/lib/Track2GeoJson';
 import { readDroppedFile } from '@/lib/fileReader/readDroppedFile';
 import type { IntervalDetail } from './types/IntervalDetails';
 import { debounce } from 'lodash';
-import { useCursorSync, cursorToInterval } from '@/lib/elevationSync';
-import type { TrackPoint } from '@/lib/elevationSync';
+import { useCursorSync, cursorToInterval } from '@la-rampa/elevation-cursor-sync';
+import type { TrackPoint } from '@la-rampa/elevation-cursor-sync';
 
 
 const START_TRIGGER_GRADIENT = 5 // in percent

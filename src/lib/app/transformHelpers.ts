@@ -1,6 +1,6 @@
 import { TrackSegmentIndexed } from '@/lib/TrackData'
+import { stretchInterval } from '@la-rampa/elevation-chart'
 import throttle from 'lodash/throttle'
-const { max, min } = Math
 
 type ZoomFunction = (centerIndex: number, factor: number) => void
 type PanFunction = (panDelta: number) => void
@@ -186,51 +186,6 @@ class PanEventQueue {
     // call the throttled handlepan - it is possible that it is not called immediately , but later
     this.throttledHandlePan(delta)
   }
-}
-
-/**
- * Will stretch an interval of consecutive integers with stretch factor > 0 and mid point m. Stretching could not go beyond base interval min .. max
- * 
- * Algorithm tries to keep mid point exactly by adjusting length of new array to nearest odd integer.
- * This means that stretch factor is not always achieved exactly.
- * 
- * @param i_start Min boundary of start interval
- * @param i_end Max boundary of start interval (included)
- * @param mid Mid value for stretching
- * @param factor Stretch factor
- * @param [I_min=0] Minimum value of start
- * @param [I_max=Infinity] Maximum value of end
- * @returns Object { start: v1, end: v2 } Boundaries of stretched interval
- */
-function stretchInterval(i_start: number, i_end: number, mid: number, factor: number, I_min = 0, I_max = Infinity, minLength = 20) {
-
-  // if factor === 1 do nothing
-  if (factor === 1) {
-    return { start: i_start, end: i_end }
-  }
-
-  const startLength = i_end - i_start
-
-  // if current length smaller than minLength and we have zoom in , do nothing
-  if (startLength <= minLength && factor < 1) {
-    return { start: i_start, end: i_end }
-  }
-
-  let actualFactor = factor
-
-  // For zoom in , check to not go smaller than minLength
-  if (factor < 1) {
-    const minFactorLimit = minLength / startLength
-    actualFactor = Math.max(minFactorLimit, factor)
-  }
-
-  const new_start1 = mid - actualFactor * (mid - i_start)
-  const new_end1 = mid + actualFactor * (i_end - mid)
-
-  const new_start = max(new_start1, I_min)
-  const new_end = min(new_end1, I_max)
-
-  return { start: new_start, end: new_end };
 }
 
 export { SegmentTransformManager, ZoomEventQueue, PanEventQueue, stretchInterval }

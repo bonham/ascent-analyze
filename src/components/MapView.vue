@@ -12,13 +12,9 @@ import { OSM } from 'ol/source';
 import ImageTile from 'ol/ImageTile';
 import { fromLonLat, transform } from 'ol/proj';
 import type { Feature as GeoJsonFeature, LineString as GeoJsonLineString, MultiLineString as GeoJsonMultiLineString } from 'geojson'
-import { TrackPointIndex } from '@/lib/mapView/TrackPointIndex';
-import { MarkerOnTrack } from '@/lib/mapView/mapViewHelpers'
-import { getMapElements } from '@/lib/mapView/trackLayers';
-import { geojsonLineString2OpenLayersLineString, geojsonMultiLineString2OpenLayersMultiLineString } from '@/lib/mapView/geoJson2MapFeature';
-import { zoomToTrack } from '@/lib/mapView/zoomToTrack';
+import { TrackPointIndex, MarkerOnTrack, getMapElements, geojsonLineString2OpenLayersLineString, geojsonMultiLineString2OpenLayersMultiLineString, zoomToTrack } from '@la-rampa/track-map-utils';
 import type { MapBrowserEvent } from 'ol';
-import type { TrackPoint, CursorSync } from '@/lib/elevationSync/types';
+import type { TrackPoint, CursorSync } from '@la-rampa/elevation-cursor-sync';
 
 let map: Map;
 let tpIndex: TrackPointIndex | undefined

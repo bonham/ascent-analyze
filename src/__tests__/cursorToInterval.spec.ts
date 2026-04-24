@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import { withSetup } from './testUtils'
-import { useCursorSync } from '@/lib/elevationSync/useCursorSync'
-import { cursorToInterval } from '@/lib/elevationSync/cursorToInterval'
-import type { TrackPoint } from '@/lib/elevationSync/types'
+import { useCursorSync } from '@la-rampa/elevation-cursor-sync'
+import { cursorToInterval } from '@la-rampa/elevation-cursor-sync'
+import type { TrackPoint } from '@la-rampa/elevation-cursor-sync'
 
 /**
  * Tests for cursorToInterval helper.

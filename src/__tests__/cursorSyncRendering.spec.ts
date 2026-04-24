@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick, defineComponent } from 'vue'
 import App from '../App.vue'
-import type { CursorSync } from '@/lib/elevationSync/types'
+import type { CursorSync } from '@la-rampa/elevation-cursor-sync'
 
 /**
  * Rendering tests for the cursor synchronization behavior in App.vue.

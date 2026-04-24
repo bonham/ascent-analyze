@@ -2,6 +2,18 @@
 
 This document describes the architecture, data flow, and source files of La Rampa.
 
+## Reusable Packages
+
+Three modules are extracted into independently publishable npm packages under `packages/`. See each package's README for usage documentation.
+
+| Package                           | Path                              | Contents                                                                                  |
+| --------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------- |
+| `@la-rampa/elevation-cursor-sync` | `packages/elevation-cursor-sync/` | `TrackPoint`, `CursorSync`, `useCursorSync`, `cursorToInterval`                           |
+| `@la-rampa/elevation-chart`       | `packages/elevation-chart/`       | `ElevationChart.vue`, `ZoomPanState`, `stretchInterval`, chart plugins and event handlers |
+| `@la-rampa/track-map-utils`       | `packages/track-map-utils/`       | `TrackPointIndex`, `MarkerOnTrack`, `getMapElements`, GeoJSON converters, `zoomToTrack`   |
+
+The app consumes all three via npm workspace symlinks. `vite.config.ts` and `tsconfig.app.json` both carry path aliases that resolve package names directly to their TypeScript source, so no pre-build step is needed during development.
+
 ## Data Flow
 
 ```
@@ -64,28 +76,35 @@ Three design principles govern the elevation sync module:
 
 ### Components (`src/components/`)
 
-| File                 | Description                                                                                                                                                                                                                        |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MapView.vue`        | OpenLayers map displaying the GPS track (blue line), detected climbs (red overlay), and a position marker. Accepts `cursor: CursorSync` and `points: TrackPoint[]`; wires map `pointermove`/`pointerout` to cursor sync internally |
-| `ElevationChart.vue` | Chart.js elevation profile with zoom, pan, touch gestures, and climb interval highlighting. Accepts `cursor: CursorSync`; hover calls `cursor.setByDistance()` directly                                                            |
-| `DropPanel.vue`      | File upload button wrapper                                                                                                                                                                                                         |
-| `DropField.vue`      | Drag-and-drop file handler, emits `files-dropped` event                                                                                                                                                                            |
+| File            | Description                                                                                                                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MapView.vue`   | OpenLayers map displaying the GPS track (blue line), detected climbs (red overlay), and a position marker. Accepts `cursor: CursorSync` and `points: TrackPoint[]`; wires map `pointermove`/`pointerout` to cursor sync internally |
+| `DropPanel.vue` | File upload button wrapper                                                                                                                                                                                                         |
+| `DropField.vue` | Drag-and-drop file handler, emits `files-dropped` event                                                                                                                                                                            |
+
+> `ElevationChart.vue` has moved to `packages/elevation-chart/src/`. It is imported from `@la-rampa/elevation-chart`.
 
 ### Core Library (`src/lib/`)
 
-> **Note on `TrackPoint` naming:** Two distinct types share this name. `TrackData.ts` exports `TrackPoint { lat, lon, elevation }` (raw GPS point). `elevationSync/types.ts` exports `TrackPoint { distance, elevation, lon, lat }` (resampled point with cumulative distance). Components and the cursor sync module use the elevationSync version.
+> **Note on `TrackPoint` naming:** Two distinct types share this name. `TrackData.ts` exports `TrackPoint { lat, lon, elevation }` (raw GPS point). `@la-rampa/elevation-cursor-sync` exports `TrackPoint { distance, elevation, lon, lat }` (resampled point with cumulative distance). Components and the cursor sync module use the elevation-cursor-sync version.
 
-| File                    | Description                                                                                                           |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `TrackData.ts`          | Core data model. Types: `TrackPoint` (lat/lon/elevation), `TrackPointWithDistance` (adds distanceFromStart), `TrackSegment`, `TrackSegmentWithDistance`. `TrackData` manages multiple segments (`addSegment`, `addPointToSegment`, `getSegments`, `getAllPoints`). `TrackSegmentIndexed` wraps a fixed-distance segment with a virtual/internal index distinction (virtual = user-facing index starting from any offset; internal = zero-based array index), `slice`/`sliceSegment` for range extraction, and a `zoom(midpoint, factor)` function. |
-| `analyzeAscent.ts`      | Climb detection algorithm — sliding window comparing elevation deltas against start/stop gradient thresholds          |
-| `InterpolateSegment.ts` | Resamples a track to equidistant points using Akima spline interpolation (via `commons-math-interpolation`)           |
-| `GeoJsonLoader.ts`      | Converts GeoJSON FeatureCollections into internal `TrackData` objects                                                 |
-| `Gpx2Track.ts`          | Parses GPX XML into track data using `xpath` and `@xmldom/xmldom`                                                     |
-| `Track2GeoJson.ts`      | Converts `TrackSegment` back to GeoJSON `LineString` features                                                         |
-| `haversine.ts`          | Great-circle distance calculation between coordinates                                                                 |
-| `AscentFillPlugin.ts`   | Chart.js plugin for rendering colored fills under climb sections                                                      |
-| `typeHelpers.ts`        | TypeScript utility type definitions                                                                                   |
+| File                    | Description                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TrackData.ts`          | Core data model. Types: `TrackPoint` (lat/lon/elevation), `TrackPointWithDistance` (adds distanceFromStart), `TrackSegment`, `TrackSegmentWithDistance`. `TrackData` manages multiple segments. `TrackSegmentIndexed` wraps a fixed-distance segment with virtual/internal index distinction, `slice`/`sliceSegment` for range extraction, and a `zoom(midpoint, factor)` function. |
+| `analyzeAscent.ts`      | Climb detection algorithm — sliding window comparing elevation deltas against start/stop gradient thresholds                                                                                                                                                                                                                                                                        |
+| `InterpolateSegment.ts` | Resamples a track to equidistant points using Akima spline interpolation (via `commons-math-interpolation`)                                                                                                                                                                                                                                                                         |
+| `GeoJsonLoader.ts`      | Converts GeoJSON FeatureCollections into internal `TrackData` objects                                                                                                                                                                                                                                                                                                               |
+| `Gpx2Track.ts`          | Parses GPX XML into track data using `xpath` and `@xmldom/xmldom`                                                                                                                                                                                                                                                                                                                   |
+| `Track2GeoJson.ts`      | Converts `TrackSegment` back to GeoJSON `LineString` features                                                                                                                                                                                                                                                                                                                       |
+| `haversine.ts`          | Great-circle distance calculation between coordinates                                                                                                                                                                                                                                                                                                                               |
+| `AscentFillPlugin.ts`   | Chart.js plugin for rendering colored fills under climb sections                                                                                                                                                                                                                                                                                                                    |
+| `typeHelpers.ts`        | TypeScript utility type definitions                                                                                                                                                                                                                                                                                                                                                 |
+
+> The following library groups have moved into packages and are no longer in `src/lib/`:
+>
+> - `elevationSync/` → `packages/elevation-cursor-sync/src/`
+> - `elevationChart/` → `packages/elevation-chart/src/lib/`
+> - `mapView/` → `packages/track-map-utils/src/`
 
 ### Application Helpers (`src/lib/app/`)
 
@@ -95,7 +114,7 @@ Three design principles govern the elevation sync module:
 | `extractFirstSegmentFirstTrack.ts` | Extracts the first segment from the first track in a `TrackData` array              |
 | `transformHelpers.ts`              | `SegmentTransformManager` — manages zoom/pan viewport state for the elevation chart |
 
-### Elevation Sync Module (`src/lib/elevationSync/`)
+### Elevation Sync Module (`packages/elevation-cursor-sync/src/`)
 
 | File                  | Description                                                                                                                                      |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -104,24 +123,26 @@ Three design principles govern the elevation sync module:
 | `cursorToInterval.ts` | Helper — maps `cursor.nearestIndex` to a 1-based interval ID by checking against index-based `slopeIntervals`                                    |
 | `index.ts`            | Barrel export                                                                                                                                    |
 
-### Elevation Chart Utilities (`src/lib/elevationChart/`)
+### Elevation Chart Package (`packages/elevation-chart/src/`)
 
-| File                                | Description                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| `ZoomState.ts`                      | Tracks zoom level and pan offset, enforces min/max bounds                  |
-| `VerticalLinePlugin.ts`             | Chart.js plugin that draws a vertical cursor line at the mouse position    |
-| `TransformPixelScale2ChartScale.ts` | Converts pixel coordinates to chart data coordinates for mouse interaction |
-| `eventHandlers.ts`                  | Mouse wheel, drag, and touch event handlers for chart zoom and pan         |
+| File                                    | Description                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `ElevationChart.vue`                    | Vue 3 component — full elevation chart with zoom, pan, touch, and cursor sync |
+| `lib/ZoomState.ts`                      | Tracks zoom level and pan offset, enforces min/max bounds                     |
+| `lib/VerticalLinePlugin.ts`             | Chart.js plugin that draws a vertical cursor line at the mouse position       |
+| `lib/TransformPixelScale2ChartScale.ts` | Converts pixel coordinates to chart data coordinates for touch pinch-zoom     |
+| `lib/eventHandlers.ts`                  | Mouse wheel, drag, and touch event handlers for chart zoom and pan            |
+| `lib/stretchInterval.ts`                | Pure math utility: stretches an interval around a midpoint by a factor        |
 
-### Map Utilities (`src/lib/mapView/`)
+### Map Utilities Package (`packages/track-map-utils/src/`)
 
-| File                    | Description                                                                   |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `TrackPointIndex.ts`    | KDBush spatial index for fast nearest-point queries on track coordinates      |
-| `geoJson2MapFeature.ts` | Converts GeoJSON features to OpenLayers features with styling                 |
-| `mapViewHelpers.ts`     | Utility functions for map layer creation                                      |
-| `trackLayers.ts`        | Creates OpenLayers vector layers for the track (blue) and climb overlay (red) |
-| `zoomToTrack.ts`        | Auto-zooms the map to fit the track bounds                                    |
+| File                    | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `TrackPointIndex.ts`    | KDBush spatial index for fast nearest-point queries on track coordinates    |
+| `geoJson2MapFeature.ts` | Converts GeoJSON features to OpenLayers features with coordinate projection |
+| `mapViewHelpers.ts`     | `MarkerOnTrack` — manages a single position marker on a vector layer        |
+| `trackLayers.ts`        | Creates OpenLayers vector layers for the track (blue) and overlay (red)     |
+| `zoomToTrack.ts`        | Auto-zooms the map to fit the track bounds                                  |
 
 ### File Reader (`src/lib/fileReader/`)
 

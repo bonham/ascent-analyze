@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { TrackPointIndex } from '@/lib/mapView/TrackPointIndex'
+import { TrackPointIndex } from '@la-rampa/track-map-utils'
 
 describe("TrackPointIndex", () => {
   test("first", () => {
