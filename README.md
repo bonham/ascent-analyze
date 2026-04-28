@@ -30,7 +30,7 @@ This approach detects climbs that are sustained over a meaningful distance, filt
 **Prerequisites:** Node.js 20.19+ or 22.12+
 
 ```bash
-# Install dependencies
+# Install dependencies (includes local workspace packages)
 npm install
 
 # Start development server
@@ -59,3 +59,30 @@ The production build is output to `dist/` with base path `/larampa/`.
 ## Architecture
 
 See [IMPLEMENTATION.md](IMPLEMENTATION.md) for a detailed description of the application architecture, data flow, and source file reference.
+
+## Reusable Packages
+
+Three modules from this project are published as independent npm packages under the `@la-rampa` scope. Other projects can install them without taking a dependency on the full application.
+
+| Package                                                                       | Description                                                                         | Peer deps                   |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
+| [`@la-rampa/elevation-cursor-sync`](packages/elevation-cursor-sync/README.md) | Distance-based cursor sync composable (`useCursorSync`, `CursorSync`, `TrackPoint`) | `vue`                       |
+| [`@la-rampa/elevation-chart`](packages/elevation-chart/README.md)             | Interactive Vue 3 elevation profile chart with zoom, pan, and touch gestures        | `vue`, `chart.js`           |
+| [`@la-rampa/track-map-utils`](packages/track-map-utils/README.md)             | OpenLayers utilities: spatial index, GeoJSON converters, layer factory, zoom helper | `ol`, `kdbush`, `geokdbush` |
+
+### Package development (monorepo)
+
+The packages live under `packages/` and are linked into the app via npm workspaces. Running `npm install` from the project root sets up the symlinks automatically.
+
+```
+packages/
+  elevation-cursor-sync/   ← @la-rampa/elevation-cursor-sync
+  elevation-chart/         ← @la-rampa/elevation-chart
+  track-map-utils/         ← @la-rampa/track-map-utils
+```
+
+To build an individual package for publishing:
+
+```bash
+cd packages/elevation-cursor-sync && npm run build
+```
