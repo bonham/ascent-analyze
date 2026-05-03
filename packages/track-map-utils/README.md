@@ -96,6 +96,10 @@ zoomToTrack(map, baseTrackVectorSource)
 
 ## Building a custom MapView
 
+The `track` prop is a GeoJSON `Feature<LineString>` (EPSG:4326) — e.g. loaded from a GPX file and
+converted via `Track2GeoJson`. The `points` prop is a plain `{ lon, lat }[]` array of the same
+coordinates, used to build the spatial index for pointer-move lookup.
+
 ```vue
 <script setup lang="ts">
 import Map from 'ol/Map'
@@ -103,7 +107,8 @@ import View from 'ol/View'
 import { Tile as TileLayer } from 'ol/layer'
 import { OSM } from 'ol/source'
 import { fromLonLat, transform } from 'ol/proj'
-import { onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
+import type { Feature } from 'geojson'
 import {
   TrackPointIndex,
   MarkerOnTrack,
@@ -111,9 +116,11 @@ import {
   geojsonLineString2OpenLayersLineString,
   zoomToTrack,
 } from '@la-rampa/track-map-utils'
-import type { CursorSync } from '@la-rampa/elevation-cursor-sync'
 
-const props = defineProps<{ cursor: CursorSync /* ... */ }>()
+const props = defineProps<{
+  track: Feature                          // GeoJSON LineString (EPSG:4326)
+  points: { lon: number; lat: number }[]  // same coordinates for spatial lookup
+}>()
 
 const { baseTrackVectorSource, baseTrackVectorLayer, markerSource, markerLayer } = getMapElements()
 const marker = new MarkerOnTrack(markerSource)
@@ -125,6 +132,12 @@ onMounted(() => {
     view: new View({ center: fromLonLat([0, 0]), zoom: 4 }),
   })
 
+  const olFeature = geojsonLineString2OpenLayersLineString(props.track)
+  baseTrackVectorSource.addFeature(olFeature)
+  marker.setCoordinates(olFeature.getGeometry()!.getCoordinates())
+  tpIndex = new TrackPointIndex(props.points)
+  zoomToTrack(map, baseTrackVectorSource)
+
   map.on('pointermove', (evt) => {
     const [lon, lat] = transform(
       map.getCoordinateFromPixel(evt.pixel),
@@ -132,9 +145,74 @@ onMounted(() => {
       'EPSG:4326',
     ) as [number, number]
     const idx = tpIndex?.getNearestIndex({ lon, lat })
-    if (idx != null) props.cursor.setByDistance(myPoints[idx]!.distance)
+    idx == null ? marker.clear() : marker.setByIndex(idx)
+  })
+})
+</script>
+```
+
+## Adding cursor sync with an elevation chart
+
+To synchronise the map marker with an external elevation chart, add the
+[`@la-rampa/elevation-cursor-sync`](https://github.com/bonham/elevation-cursor-sync) package.
+`CursorSync` is a shared reactive state created by `useCursorSync()` in the parent and passed as a
+prop to both the map and the chart component.
+
+The `points` prop must then be a `TrackPoint[]` (which extends `{ lon, lat }` with `distance` and
+`elevation`) so that `setByDistance` can map the pointer position back to a chart distance.
+
+```vue
+<script setup lang="ts">
+import Map from 'ol/Map'
+import View from 'ol/View'
+import { Tile as TileLayer } from 'ol/layer'
+import { OSM } from 'ol/source'
+import { fromLonLat, transform } from 'ol/proj'
+import { onMounted, watch } from 'vue'
+import type { Feature } from 'geojson'
+import {
+  TrackPointIndex,
+  MarkerOnTrack,
+  getMapElements,
+  geojsonLineString2OpenLayersLineString,
+  zoomToTrack,
+} from '@la-rampa/track-map-utils'
+import type { CursorSync, TrackPoint } from '@la-rampa/elevation-cursor-sync'
+
+const props = defineProps<{
+  track: Feature
+  points: TrackPoint[]   // carries .distance — required for cursor.setByDistance()
+  cursor: CursorSync     // shared with the elevation chart via useCursorSync()
+}>()
+
+const { baseTrackVectorSource, baseTrackVectorLayer, markerSource, markerLayer } = getMapElements()
+const marker = new MarkerOnTrack(markerSource)
+let tpIndex: TrackPointIndex | undefined
+
+onMounted(() => {
+  const map = new Map({
+    layers: [new TileLayer({ source: new OSM() }), baseTrackVectorLayer, markerLayer],
+    view: new View({ center: fromLonLat([0, 0]), zoom: 4 }),
   })
 
+  const olFeature = geojsonLineString2OpenLayersLineString(props.track)
+  baseTrackVectorSource.addFeature(olFeature)
+  marker.setCoordinates(olFeature.getGeometry()!.getCoordinates())
+  tpIndex = new TrackPointIndex(props.points)
+  zoomToTrack(map, baseTrackVectorSource)
+
+  // pointer move → notify chart via shared cursor
+  map.on('pointermove', (evt) => {
+    const [lon, lat] = transform(
+      map.getCoordinateFromPixel(evt.pixel),
+      'EPSG:3857',
+      'EPSG:4326',
+    ) as [number, number]
+    const idx = tpIndex?.getNearestIndex({ lon, lat })
+    if (idx != null) props.cursor.setByDistance(props.points[idx]!.distance)
+  })
+
+  // chart cursor change → move map marker
   watch(
     () => props.cursor.nearestIndex.value,
     (idx) => {
